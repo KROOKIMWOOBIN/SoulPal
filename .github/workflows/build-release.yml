@@ -102,22 +102,22 @@ jobs:
 
       - name: Add INTERNET permission to AndroidManifest
         run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'INTERNET' "$MANIFEST"; then
-            sed -i 's|<manifest |<manifest \n    <uses-permission android:name="android.permission.INTERNET"/>\n|' "$MANIFEST"
-            # Fallback: insert after <manifest ...> line
-            python3 -c "
-          import re
-          with open('$MANIFEST') as f: content = f.read()
+          python3 - << 'EOF'
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path) as f:
+              content = f.read()
           if 'INTERNET' not in content:
-              content = content.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application', 1)
-              with open('$MANIFEST', 'w') as f: f.write(content)
+              content = content.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
+                  1
+              )
+              with open(path, 'w') as f:
+                  f.write(content)
               print('Added INTERNET permission')
           else:
               print('INTERNET permission already present')
-          "
-          fi
-          grep -n 'INTERNET\|uses-permission' "$MANIFEST" || echo "No permissions found"
+          EOF
 
       - name: Get dependencies
         run: flutter pub get
