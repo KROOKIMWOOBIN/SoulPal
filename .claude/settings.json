@@ -7,7 +7,9 @@
       "Bash(curl -s -o /tmp/tags.json -w \"%{http_code}\" https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/tags)",
       "Read(//tmp/**)",
       "Bash(python3 -m json.tool)",
-      "Bash(curl -s \"https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/actions/runs/23379809314/jobs\")"
+      "Bash(curl -s \"https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/actions/runs/23379809314/jobs\")",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
