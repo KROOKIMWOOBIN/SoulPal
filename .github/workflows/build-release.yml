@@ -12,8 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -30,27 +33,20 @@ jobs:
 
       - name: Create Flutter project scaffold
         run: |
-          # 기존 파일 백업
           cp pubspec.yaml /tmp/pubspec.yaml.bak
           cp -r lib /tmp/lib_bak
           cp -r assets /tmp/assets_bak 2>/dev/null || true
+          cp -r vendor /tmp/vendor_bak
 
-          # Flutter 프로젝트 스캐폴드 생성 (android/ 폴더 생성)
           flutter create --project-name soulpal --org com.soulpal --platforms android . --overwrite --no-pub
 
-          # 백업 복원
           cp /tmp/pubspec.yaml.bak pubspec.yaml
           rm -rf lib && cp -r /tmp/lib_bak lib
           rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
+          rm -rf vendor && cp -r /tmp/vendor_bak vendor
 
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Fetch llama.cpp source for Android build
-        run: |
-          LLAMA_SRC=$(find ~/.pub-cache -path "*/llama_cpp_dart-*/src" -type d | head -1)
-          echo "llama_cpp_dart src: $LLAMA_SRC"
-          git clone --depth 1 https://github.com/ggml-org/llama.cpp "$LLAMA_SRC/llama.cpp"
 
       - name: Build APK (release)
         run: flutter build apk --release --split-per-abi

@@ -11,7 +11,8 @@ dependencies:
     sdk: flutter
 
   # Local LLM (llama.cpp 내장 - Ollama 불필요)
-  llama_cpp_dart: ^0.1.0
+  llama_cpp_dart:
+    path: vendor/llama_cpp_dart
 
   # Storage
   shared_preferences: ^2.2.3
