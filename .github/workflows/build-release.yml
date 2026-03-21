@@ -46,6 +46,12 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Fetch llama.cpp source for Android build
+        run: |
+          LLAMA_SRC=$(find ~/.pub-cache -path "*/llama_cpp_dart-*/src" -type d | head -1)
+          echo "llama_cpp_dart src: $LLAMA_SRC"
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp "$LLAMA_SRC/llama.cpp"
+
       - name: Build APK (release)
         run: flutter build apk --release --split-per-abi
 
