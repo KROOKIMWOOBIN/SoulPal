@@ -36,7 +36,7 @@ jobs:
           cp -r assets /tmp/assets_bak 2>/dev/null || true
 
           # Flutter 프로젝트 스캐폴드 생성 (android/ 폴더 생성)
-          flutter create --project-name soulpal --org com.soulpal --platforms android . --overwrite
+          flutter create --project-name soulpal --org com.soulpal --platforms android . --overwrite --no-pub
 
           # 백업 복원
           cp /tmp/pubspec.yaml.bak pubspec.yaml
