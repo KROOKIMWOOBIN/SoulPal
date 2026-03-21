@@ -221,7 +221,7 @@ class _OnboardingPage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             desc,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               color: Colors.white.withOpacity(0.8),
               height: 1.7,

@@ -47,12 +47,12 @@ jobs:
 
       - name: Set NDK version in build.gradle
         run: |
-          GRADLE_FILE="android/app/build.gradle.kts"
-          if [ -f "$GRADLE_FILE" ]; then
-            sed -i 's/android {/android {\n        ndkVersion = "27.0.12077973"/' "$GRADLE_FILE"
+          if [ -f "android/app/build.gradle.kts" ]; then
+            sed -i '/^android {/a\    ndkVersion = "27.0.12077973"' android/app/build.gradle.kts
+            echo "=== build.gradle.kts (first 20 lines) ===" && head -20 android/app/build.gradle.kts
           else
-            GRADLE_FILE="android/app/build.gradle"
-            sed -i 's/android {/android {\n    ndkVersion "27.0.12077973"/' "$GRADLE_FILE"
+            sed -i '/^android {/a\    ndkVersion "27.0.12077973"' android/app/build.gradle
+            echo "=== build.gradle (first 20 lines) ===" && head -20 android/app/build.gradle
           fi
 
       - name: Get dependencies

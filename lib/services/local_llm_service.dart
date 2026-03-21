@@ -18,7 +18,7 @@ class LocalLlmService {
   }) async {
     _dispose();
 
-    final modelParams = ModelParams()
+    final contextParams = ContextParams()
       ..nCtx = contextLength
       ..nBatch = 512;
 
@@ -27,7 +27,7 @@ class LocalLlmService {
       ..topP = 0.9
       ..topK = 40;
 
-    _llama = Llama(modelPath, modelParams, null, samplerParams);
+    _llama = Llama(modelPath, null, contextParams, samplerParams);
     _ready = true;
   }
 
