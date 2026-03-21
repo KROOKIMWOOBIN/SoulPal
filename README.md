@@ -8,7 +8,7 @@
 
 ### 최신 버전 다운로드
 
-👉 **[Releases 페이지에서 APK 다운로드](../../releases/latest)**
+👉 **[Releases 페이지에서 APK 다운로드](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest)**
 
 | APK 파일 | 기기 |
 |----------|------|
@@ -42,7 +42,7 @@
 ## 🛠️ 개발자용 빌드
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/SoulPal.git
+git clone https://github.com/KROOKIMWOOBIN/SoulPal.git
 cd SoulPal
 bash setup.sh
 flutter run
