@@ -45,6 +45,16 @@ jobs:
           rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
           rm -rf vendor && cp -r /tmp/vendor_bak vendor
 
+      - name: Set NDK version in build.gradle
+        run: |
+          GRADLE_FILE="android/app/build.gradle.kts"
+          if [ -f "$GRADLE_FILE" ]; then
+            sed -i 's/android {/android {\n        ndkVersion = "27.0.12077973"/' "$GRADLE_FILE"
+          else
+            GRADLE_FILE="android/app/build.gradle"
+            sed -i 's/android {/android {\n    ndkVersion "27.0.12077973"/' "$GRADLE_FILE"
+          fi
+
       - name: Get dependencies
         run: flutter pub get
 

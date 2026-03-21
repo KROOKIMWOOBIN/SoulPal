@@ -223,7 +223,7 @@ class _OnboardingPage extends StatelessWidget {
             desc,
             style: const TextStyle(
               fontSize: 15,
-              color: Colors.white80,
+              color: Colors.white.withOpacity(0.8),
               height: 1.7,
             ),
             textAlign: TextAlign.center,

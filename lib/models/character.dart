@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart' show Color;
 import '../core/constants/categories.dart';
 
 class Character {
@@ -121,6 +122,3 @@ class Character {
         isFavorite: isFavorite ?? this.isFavorite,
       );
 }
-
-// re-export Color so models don't need an extra import
-export 'package:flutter/material.dart' show Color;

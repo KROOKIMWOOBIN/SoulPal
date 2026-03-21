@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
+import 'package:llama_cpp_dart/llama_cpp_dart.dart' hide Message;
 import '../models/character.dart';
 import '../models/message.dart';
 
 class LocalLlmService {
-  LlamaProcessor? _processor;
+  Llama? _llama;
   bool _ready = false;
   bool _generating = false;
 
@@ -18,18 +18,16 @@ class LocalLlmService {
   }) async {
     _dispose();
 
-    final modelParams = LlamaModel(modelPath);
-
-    final contextParams = ContextParams()
+    final modelParams = ModelParams()
       ..nCtx = contextLength
       ..nBatch = 512;
 
     final samplerParams = SamplerParams()
-      ..temperature = temperature
+      ..temp = temperature
       ..topP = 0.9
       ..topK = 40;
 
-    _processor = LlamaProcessor(modelParams, samplerParams, contextParams);
+    _llama = Llama(modelPath, modelParams, null, samplerParams);
     _ready = true;
   }
 
@@ -40,7 +38,7 @@ class LocalLlmService {
     required String userMessage,
     int historyCount = 10,
   }) async {
-    if (!_ready || _processor == null) {
+    if (!_ready || _llama == null) {
       throw Exception('AI가 초기화되지 않았습니다. 앱을 재시작해주세요.');
     }
     if (_generating) {
@@ -48,32 +46,17 @@ class LocalLlmService {
     }
 
     _generating = true;
-    final completer = Completer<String>();
-    final buffer = StringBuffer();
-
-    _processor!.setTokenCallback((token) {
-      if (completer.isCompleted) return;
-
-      if (_isStopToken(token)) {
-        _generating = false;
-        completer.complete(_clean(buffer.toString()));
-        return;
-      }
-      buffer.write(token);
-    });
-
-    final prompt = _buildPrompt(character, history, userMessage, historyCount);
-    _processor!.prompt(prompt);
-
     try {
-      return await completer.future.timeout(
-        const Duration(seconds: 90),
-        onTimeout: () {
-          _generating = false;
-          final text = _clean(buffer.toString());
-          return text.isNotEmpty ? text : '...';
-        },
-      );
+      final prompt = _buildPrompt(character, history, userMessage, historyCount);
+      _llama!.setPrompt(prompt);
+
+      final buffer = StringBuffer();
+      await for (final token in _llama!.generateText()) {
+        if (_isStopToken(token)) break;
+        buffer.write(token);
+      }
+
+      return _clean(buffer.toString());
     } finally {
       _generating = false;
     }
@@ -124,8 +107,8 @@ class LocalLlmService {
   }
 
   void _dispose() {
-    _processor?.dispose();
-    _processor = null;
+    _llama?.dispose();
+    _llama = null;
     _ready = false;
     _generating = false;
   }
