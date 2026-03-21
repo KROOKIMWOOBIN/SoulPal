@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 class DownloadProgress {
   final int received;
   final int total;
-  final double? percent; // 0.0~1.0, null이면 알 수 없음
+  final double? percent;
 
   const DownloadProgress({
     required this.received,
@@ -26,18 +26,13 @@ class DownloadProgress {
 }
 
 class ModelManager {
-  /// Llama 3.2 1B Instruct Q4_K_M
-  /// - 크기: ~800MB
-  /// - 성능: 모바일에서 빠른 추론 가능
-  /// - 한국어: 기본 지원
   static const modelUrl =
       'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF'
       '/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 
   static const _filename = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
-
-  /// 예상 최소 파일 크기 (다운 완료 판별용)
-  static const _minValidSize = 600 * 1024 * 1024; // 600MB
+  static const _minValidSize = 700 * 1024 * 1024; // 700MB (실제 크기 ~800MB)
+  static const _maxRetries = 3;
 
   // ─── 경로 ────────────────────────────────────────────────────
   static Future<String> get modelPath async {
@@ -53,15 +48,38 @@ class ModelManager {
     return (await file.length()) >= _minValidSize;
   }
 
-  /// 현재 다운로드된 바이트 수 (재시작 지점 계산용)
   static Future<int> _downloadedBytes() async {
     final path = await modelPath;
     final file = File(path);
     return file.existsSync() ? await file.length() : 0;
   }
 
-  // ─── 다운로드 (재시작 지원) ──────────────────────────────────
+  // ─── 다운로드 (재시도 + 이어받기) ────────────────────────────
   static Stream<DownloadProgress> download() async* {
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      try {
+        yield* _downloadOnce();
+        return; // 성공 시 종료
+      } on SocketException catch (e) {
+        if (attempt == _maxRetries) {
+          throw Exception('네트워크 연결 오류 (소켓): $e\n인터넷 연결을 확인해주세요.');
+        }
+        await Future.delayed(Duration(seconds: attempt * 2));
+      } on HttpException catch (e) {
+        if (attempt == _maxRetries) {
+          throw Exception('HTTP 오류: $e');
+        }
+        await Future.delayed(Duration(seconds: attempt * 2));
+      } on Exception catch (e) {
+        final msg = e.toString();
+        // 서버 오류(5xx)만 재시도, 클라이언트 오류(4xx)는 즉시 실패
+        if (msg.contains('HTTP 4') || attempt == _maxRetries) rethrow;
+        await Future.delayed(Duration(seconds: attempt * 2));
+      }
+    }
+  }
+
+  static Stream<DownloadProgress> _downloadOnce() async* {
     final path = await modelPath;
     final file = File(path);
     final startByte = await _downloadedBytes();
@@ -69,25 +87,34 @@ class ModelManager {
     final client = http.Client();
     try {
       final request = http.Request('GET', Uri.parse(modelUrl));
+      request.headers['User-Agent'] = 'SoulPal/1.0 (Android)';
 
-      // Range 헤더 = 이어받기
       if (startByte > 0) {
         request.headers['Range'] = 'bytes=$startByte-';
       }
 
-      final response = await client.send(request);
+      final response = await client.send(request).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw SocketException('연결 시간 초과'),
+      );
 
-      // 200 = 처음, 206 = 이어받기
       if (response.statusCode != 200 && response.statusCode != 206) {
-        throw Exception('서버 오류: HTTP ${response.statusCode}');
+        throw Exception(
+          'HTTP ${response.statusCode}: '
+          '${_httpErrorDescription(response.statusCode)}',
+        );
       }
 
+      // 이어받기인데 서버가 206이 아닌 200을 반환하면 처음부터 다시
+      final effectiveStart =
+          (startByte > 0 && response.statusCode == 200) ? 0 : startByte;
+
       final contentLength = response.contentLength ?? 0;
-      final total = startByte + contentLength;
-      var received = startByte;
+      final total = effectiveStart + contentLength;
+      var received = effectiveStart;
 
       final sink = file.openWrite(
-        mode: startByte > 0 ? FileMode.append : FileMode.write,
+        mode: effectiveStart > 0 ? FileMode.append : FileMode.write,
       );
 
       try {
@@ -106,6 +133,16 @@ class ModelManager {
       }
     } finally {
       client.close();
+    }
+  }
+
+  static String _httpErrorDescription(int code) {
+    switch (code) {
+      case 401: return '인증 필요 (401)';
+      case 403: return '접근 거부 (403)';
+      case 404: return '파일을 찾을 수 없음 (404)';
+      case 429: return '요청 횟수 초과, 잠시 후 다시 시도 (429)';
+      default:  return '서버 오류 ($code)';
     }
   }
 

@@ -123,7 +123,9 @@ class ChatProvider extends ChangeNotifier {
     try {
       final reply = await _llm.chat(
         character: character,
-        history: _messages.sublist(0, _messages.length - 1),
+        history: _messages.length > 1
+            ? _messages.sublist(0, _messages.length - 1)
+            : [],
         userMessage: text.trim(),
         historyCount: historyCount,
       );
@@ -212,7 +214,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _llm.dispose();
+    _llm.dispose().ignore();
     super.dispose();
   }
 }

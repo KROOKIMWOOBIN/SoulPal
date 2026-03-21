@@ -49,15 +49,75 @@ jobs:
 
       - name: Patch android build.gradle (NDK + minSdk)
         run: |
-          if [ -f "android/app/build.gradle.kts" ]; then
-            sed -i 's/ndkVersion = flutter\.ndkVersion/ndkVersion = "27.0.12077973"/' android/app/build.gradle.kts
-            sed -i 's/minSdk = flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
-            echo "=== Patched build.gradle.kts ===" && cat android/app/build.gradle.kts
-          else
-            sed -i 's/ndkVersion flutter\.ndkVersion/ndkVersion "27.0.12077973"/' android/app/build.gradle
-            sed -i 's/minSdkVersion flutter\.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
-            echo "=== Patched build.gradle ===" && cat android/app/build.gradle
+          python3 - << 'EOF'
+          import re, sys, os
+
+          # Find the gradle file
+          kts = 'android/app/build.gradle.kts'
+          groovy = 'android/app/build.gradle'
+          path = kts if os.path.exists(kts) else groovy
+          print(f"Patching: {path}")
+
+          with open(path) as f:
+              content = f.read()
+
+          # Show before
+          for line in content.splitlines():
+              if 'minSdk' in line or 'ndkVersion' in line:
+                  print(f"  BEFORE: {line.strip()}")
+
+          # Patch NDK
+          content, n = re.subn(
+              r'ndkVersion\s*=\s*flutter\.ndkVersion',
+              'ndkVersion = "27.0.12077973"', content)
+          if n == 0:
+              content, n = re.subn(
+                  r'ndkVersion\s+flutter\.ndkVersion',
+                  'ndkVersion "27.0.12077973"', content)
+          print(f"  NDK replacements: {n}")
+
+          # Patch minSdk
+          content, n = re.subn(
+              r'minSdk\s*=\s*flutter\.minSdkVersion',
+              'minSdk = 23', content)
+          if n == 0:
+              content, n = re.subn(
+                  r'minSdkVersion\s+flutter\.minSdkVersion',
+                  'minSdkVersion 23', content)
+          print(f"  minSdk replacements: {n}")
+
+          with open(path, 'w') as f:
+              f.write(content)
+
+          # Verify
+          for line in content.splitlines():
+              if 'minSdk' in line or 'ndkVersion' in line:
+                  print(f"  AFTER:  {line.strip()}")
+
+          # Fail if minSdk 21 still present
+          if 'flutter.minSdkVersion' in content:
+              print("ERROR: minSdk patch failed!")
+              sys.exit(1)
+          EOF
+
+      - name: Add INTERNET permission to AndroidManifest
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q 'INTERNET' "$MANIFEST"; then
+            sed -i 's|<manifest |<manifest \n    <uses-permission android:name="android.permission.INTERNET"/>\n|' "$MANIFEST"
+            # Fallback: insert after <manifest ...> line
+            python3 -c "
+          import re
+          with open('$MANIFEST') as f: content = f.read()
+          if 'INTERNET' not in content:
+              content = content.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application', 1)
+              with open('$MANIFEST', 'w') as f: f.write(content)
+              print('Added INTERNET permission')
+          else:
+              print('INTERNET permission already present')
+          "
           fi
+          grep -n 'INTERNET\|uses-permission' "$MANIFEST" || echo "No permissions found"
 
       - name: Get dependencies
         run: flutter pub get
