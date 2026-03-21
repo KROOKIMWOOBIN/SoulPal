@@ -3,8 +3,8 @@ name: Build & Release APK
 on:
   push:
     tags:
-      - 'v*'          # v1.0.0 같은 태그 푸시 시 자동 실행
-  workflow_dispatch:  # GitHub UI에서 수동 실행도 가능
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -30,7 +30,18 @@ jobs:
 
       - name: Create Flutter project scaffold
         run: |
-          flutter create --project-name soulpal --org com.soulpal --platforms android .
+          # 기존 파일 백업
+          cp pubspec.yaml /tmp/pubspec.yaml.bak
+          cp -r lib /tmp/lib_bak
+          cp -r assets /tmp/assets_bak 2>/dev/null || true
+
+          # Flutter 프로젝트 스캐폴드 생성 (android/ 폴더 생성)
+          flutter create --project-name soulpal --org com.soulpal --platforms android . --overwrite
+
+          # 백업 복원
+          cp /tmp/pubspec.yaml.bak pubspec.yaml
+          rm -rf lib && cp -r /tmp/lib_bak lib
+          rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
 
       - name: Get dependencies
         run: flutter pub get
@@ -41,9 +52,9 @@ jobs:
       - name: Rename APKs
         run: |
           cd build/app/outputs/flutter-apk
-          mv app-arm64-v8a-release.apk SoulPal-arm64.apk    || true
-          mv app-armeabi-v7a-release.apk SoulPal-arm32.apk  || true
-          mv app-x86_64-release.apk SoulPal-x86_64.apk      || true
+          mv app-arm64-v8a-release.apk SoulPal-arm64.apk   || true
+          mv app-armeabi-v7a-release.apk SoulPal-arm32.apk || true
+          mv app-x86_64-release.apk SoulPal-x86_64.apk     || true
 
       - name: Get version from tag
         id: version
@@ -62,21 +73,18 @@ jobs:
 
             ### 📥 설치 방법
 
-            1. 아래 APK 파일 중 하나를 다운로드
+            1. 아래 APK 파일 다운로드
             2. 안드로이드 설정 → **출처를 알 수 없는 앱 허용** 켜기
             3. 다운로드한 APK 파일 실행 → 설치
 
             | 파일 | 기기 유형 |
             |------|-----------|
-            | `SoulPal-arm64.apk` | 대부분의 최신 안드로이드 폰 (권장) |
+            | `SoulPal-arm64.apk` | 대부분의 최신 안드로이드 폰 **(권장)** |
             | `SoulPal-arm32.apk` | 구형 안드로이드 폰 |
-            | `SoulPal-x86_64.apk` | 에뮬레이터/특수 기기 |
 
             > **첫 실행 시 AI 모델 (~800MB) 다운로드가 필요합니다.**
-            > Wi-Fi 환경에서 설치를 권장합니다.
           files: |
             build/app/outputs/flutter-apk/SoulPal-arm64.apk
             build/app/outputs/flutter-apk/SoulPal-arm32.apk
-            build/app/outputs/flutter-apk/SoulPal-x86_64.apk
           draft: false
           prerelease: false

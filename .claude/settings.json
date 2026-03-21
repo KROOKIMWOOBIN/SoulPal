@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /tmp/repo.json -w \"%{http_code}\" https://api.github.com/repos/KROOKIMWOOBIN/SoulPal)",
+      "Bash(curl -s -o /tmp/releases.json -w \"%{http_code}\" https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/releases)",
+      "Bash(curl -s -o /tmp/runs.json -w \"%{http_code}\" https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/actions/runs)",
+      "Bash(curl -s -o /tmp/tags.json -w \"%{http_code}\" https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/tags)",
+      "Read(//tmp/**)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"https://api.github.com/repos/KROOKIMWOOBIN/SoulPal/actions/runs/23379809314/jobs\")"
+    ]
+  }
+}
