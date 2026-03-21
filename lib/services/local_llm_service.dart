@@ -11,18 +11,21 @@ class LocalLlmService {
   bool get isReady => _ready;
 
   // ─── 초기화 ──────────────────────────────────────────────────
-  Future<void> initialize(String modelPath) async {
+  Future<void> initialize(
+    String modelPath, {
+    double temperature = 0.8,
+    int contextLength = 2048,
+  }) async {
     _dispose();
 
-    // llama_cpp_dart 설정
     final modelParams = LlamaModel(modelPath);
 
     final contextParams = ContextParams()
-      ..nCtx = 2048   // 컨텍스트 윈도우 (메모리 ↔ 기억 길이 트레이드오프)
+      ..nCtx = contextLength
       ..nBatch = 512;
 
     final samplerParams = SamplerParams()
-      ..temperature = 0.8
+      ..temperature = temperature
       ..topP = 0.9
       ..topK = 40;
 
@@ -35,6 +38,7 @@ class LocalLlmService {
     required Character character,
     required List<Message> history,
     required String userMessage,
+    int historyCount = 10,
   }) async {
     if (!_ready || _processor == null) {
       throw Exception('AI가 초기화되지 않았습니다. 앱을 재시작해주세요.');
@@ -50,7 +54,6 @@ class LocalLlmService {
     _processor!.setTokenCallback((token) {
       if (completer.isCompleted) return;
 
-      // Llama 3.2 종료 토큰
       if (_isStopToken(token)) {
         _generating = false;
         completer.complete(_clean(buffer.toString()));
@@ -59,7 +62,7 @@ class LocalLlmService {
       buffer.write(token);
     });
 
-    final prompt = _buildPrompt(character, history, userMessage);
+    final prompt = _buildPrompt(character, history, userMessage, historyCount);
     _processor!.prompt(prompt);
 
     try {
@@ -81,6 +84,7 @@ class LocalLlmService {
     Character character,
     List<Message> history,
     String userMessage,
+    int historyCount,
   ) {
     final sb = StringBuffer();
 
@@ -89,15 +93,13 @@ class LocalLlmService {
     sb.write(character.buildSystemPrompt());
     sb.write('<|eot_id|>');
 
-    // 최근 대화 히스토리 (최대 10개)
-    for (final msg in history.takeLast(10)) {
+    for (final msg in history.takeLast(historyCount)) {
       final role = msg.isUser ? 'user' : 'assistant';
       sb.write('<|start_header_id|>$role<|end_header_id|>\n\n');
       sb.write(msg.content);
       sb.write('<|eot_id|>');
     }
 
-    // 현재 사용자 메시지
     sb.write('<|start_header_id|>user<|end_header_id|>\n\n');
     sb.write(userMessage);
     sb.write('<|eot_id|>');

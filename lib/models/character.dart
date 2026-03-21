@@ -12,6 +12,7 @@ class Character {
   DateTime createdAt;
   String? lastMessage;
   DateTime? lastMessageAt;
+  bool isFavorite;
 
   Character({
     required this.id,
@@ -24,6 +25,7 @@ class Character {
     required this.createdAt,
     this.lastMessage,
     this.lastMessageAt,
+    this.isFavorite = false,
   });
 
   // ─── Convenience getters ─────────────────────────────────────
@@ -48,6 +50,7 @@ class Character {
         'createdAt': createdAt.toIso8601String(),
         'lastMessage': lastMessage,
         'lastMessageAt': lastMessageAt?.toIso8601String(),
+        'isFavorite': isFavorite,
       };
 
   factory Character.fromJson(Map<String, dynamic> json) => Character(
@@ -63,13 +66,14 @@ class Character {
         lastMessageAt: json['lastMessageAt'] != null
             ? DateTime.parse(json['lastMessageAt'] as String)
             : null,
+        isFavorite: json['isFavorite'] as bool? ?? false,
       );
 
   String toJsonString() => jsonEncode(toJson());
   factory Character.fromJsonString(String s) =>
       Character.fromJson(jsonDecode(s) as Map<String, dynamic>);
 
-  /// Build the system prompt for Ollama
+  /// Build the system prompt for local LLM
   String buildSystemPrompt() {
     final interestLabels = interests.map((i) => i.labelKo).join(', ');
     return '''당신은 ${name}입니다. 사용자의 특별한 ${relationship.labelKo}입니다.
@@ -92,18 +96,29 @@ class Character {
 7. 자신의 이름은 $name 입니다.''';
   }
 
-  Character copyWith({String? lastMessage, DateTime? lastMessageAt}) =>
+  Character copyWith({
+    String? name,
+    String? relationshipId,
+    String? personalityId,
+    String? speechStyleId,
+    List<String>? interestIds,
+    String? appearanceId,
+    String? lastMessage,
+    DateTime? lastMessageAt,
+    bool? isFavorite,
+  }) =>
       Character(
         id: id,
-        name: name,
-        relationshipId: relationshipId,
-        personalityId: personalityId,
-        speechStyleId: speechStyleId,
-        interestIds: interestIds,
-        appearanceId: appearanceId,
+        name: name ?? this.name,
+        relationshipId: relationshipId ?? this.relationshipId,
+        personalityId: personalityId ?? this.personalityId,
+        speechStyleId: speechStyleId ?? this.speechStyleId,
+        interestIds: interestIds ?? this.interestIds,
+        appearanceId: appearanceId ?? this.appearanceId,
         createdAt: createdAt,
         lastMessage: lastMessage ?? this.lastMessage,
         lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+        isFavorite: isFavorite ?? this.isFavorite,
       );
 }
 

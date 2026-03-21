@@ -9,8 +9,11 @@ import '../../providers/settings_provider.dart';
 import 'widgets/category_option_card.dart';
 import 'widgets/step_indicator.dart';
 
+/// Pass [existing] to enter edit mode.
 class CreationScreen extends StatefulWidget {
-  const CreationScreen({super.key});
+  final Character? existing;
+
+  const CreationScreen({super.key, this.existing});
 
   @override
   State<CreationScreen> createState() => _CreationScreenState();
@@ -20,16 +23,30 @@ class _CreationScreenState extends State<CreationScreen> {
   int _step = 0;
   static const int _totalSteps = 6;
 
-  // Selections
-  String? _relationshipId;
-  String? _personalityId;
-  String? _speechStyleId;
-  final Set<String> _interestIds = {};
-  String? _appearanceId;
-  final _nameController = TextEditingController();
+  late String? _relationshipId;
+  late String? _personalityId;
+  late String? _speechStyleId;
+  late final Set<String> _interestIds;
+  late String? _appearanceId;
+  late final TextEditingController _nameController;
   bool _nameEdited = false;
 
+  bool get _isEditMode => widget.existing != null;
+
   static const _uuid = Uuid();
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.existing;
+    _relationshipId = c?.relationshipId;
+    _personalityId = c?.personalityId;
+    _speechStyleId = c?.speechStyleId;
+    _interestIds = c != null ? Set.from(c.interestIds) : {};
+    _appearanceId = c?.appearanceId;
+    _nameController = TextEditingController(text: c?.name ?? '');
+    _nameEdited = c != null;
+  }
 
   @override
   void dispose() {
@@ -43,7 +60,11 @@ class _CreationScreenState extends State<CreationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(settings.t('캐릭터 만들기', 'Create Character')),
+        title: Text(
+          _isEditMode
+              ? settings.t('캐릭터 편집', 'Edit Character')
+              : settings.t('캐릭터 만들기', 'Create Character'),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () {
@@ -176,13 +197,20 @@ class _CreationScreenState extends State<CreationScreen> {
 
   bool _canProceed() {
     switch (_step) {
-      case 0: return _relationshipId != null;
-      case 1: return _personalityId != null;
-      case 2: return _speechStyleId != null;
-      case 3: return _interestIds.isNotEmpty;
-      case 4: return _appearanceId != null;
-      case 5: return _nameController.text.trim().isNotEmpty;
-      default: return false;
+      case 0:
+        return _relationshipId != null;
+      case 1:
+        return _personalityId != null;
+      case 2:
+        return _speechStyleId != null;
+      case 3:
+        return _interestIds.isNotEmpty;
+      case 4:
+        return _appearanceId != null;
+      case 5:
+        return _nameController.text.trim().isNotEmpty;
+      default:
+        return false;
     }
   }
 
@@ -196,7 +224,9 @@ class _CreationScreenState extends State<CreationScreen> {
           onPressed: _canProceed() ? () => _onNext(context) : null,
           child: Text(
             isLast
-                ? settings.t('캐릭터 생성!', 'Create!')
+                ? (_isEditMode
+                    ? settings.t('저장', 'Save')
+                    : settings.t('캐릭터 생성!', 'Create!'))
                 : settings.t('다음', 'Next'),
           ),
         ),
@@ -205,14 +235,13 @@ class _CreationScreenState extends State<CreationScreen> {
   }
 
   void _onNext(BuildContext context) {
-    if (_step == 4 && !_nameEdited) {
-      // Auto-fill suggested name when reaching name step
+    if (_step == 4 && !_nameEdited && !_isEditMode) {
       _nameController.text = _getSuggestedName();
     }
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
     } else {
-      _createCharacter(context);
+      _isEditMode ? _saveCharacter(context) : _createCharacter(context);
     }
   }
 
@@ -238,6 +267,33 @@ class _CreationScreenState extends State<CreationScreen> {
               .read<SettingsProvider>()
               .t('${character.name} 친구가 생겼어요! 🎉',
                   '${character.name} is ready to chat! 🎉'),
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _saveCharacter(BuildContext context) {
+    final updated = widget.existing!.copyWith(
+      name: _nameController.text.trim(),
+      relationshipId: _relationshipId,
+      personalityId: _personalityId,
+      speechStyleId: _speechStyleId,
+      interestIds: _interestIds.toList(),
+      appearanceId: _appearanceId,
+    );
+
+    context.read<CharacterProvider>().updateCharacter(updated);
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context
+              .read<SettingsProvider>()
+              .t('${updated.name} 정보가 저장됐어요!',
+                  '${updated.name}\'s profile updated!'),
         ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -301,7 +357,8 @@ class _CategoryStep extends StatelessWidget {
               selected: selected.contains(items[i].id),
               locale: locale,
               onTap: () => onToggle(items[i].id),
-            ).animate(delay: (i * 50).ms).fadeIn().scale(begin: const Offset(0.9, 0.9)),
+            ).animate(delay: (i * 50).ms).fadeIn().scale(
+                begin: const Offset(0.9, 0.9)),
           ),
         ),
       ],
@@ -383,7 +440,8 @@ class _NameStepState extends State<_NameStep> {
               widget.controller.text = widget.suggestedName;
               widget.onNameChanged();
             },
-            child: Text(widget.settings.t('추천 이름 사용', 'Use suggested')),
+            child:
+                Text(widget.settings.t('추천 이름 사용', 'Use suggested')),
           ),
         ],
       ),

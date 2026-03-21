@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 import '../../models/character.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/character_provider.dart';
@@ -18,6 +21,8 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+  bool _showSearch = false;
 
   @override
   void initState() {
@@ -26,11 +31,24 @@ class _ChatScreenState extends State<ChatScreen> {
       final chat = context.read<ChatProvider>();
       chat.loadChat(widget.character.id);
     });
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    // 스크롤이 맨 위에 도달하면 더 불러오기
+    if (_scrollController.position.pixels <=
+        _scrollController.position.minScrollExtent + 80) {
+      final chat = context.read<ChatProvider>();
+      if (chat.hasMore) {
+        chat.loadMoreMessages();
+      }
+    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -53,67 +71,193 @@ class _ChatScreenState extends State<ChatScreen> {
     final appearance = widget.character.appearance;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0FF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        titleSpacing: 0,
-        leading: IconButton(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _showSearch
+          ? _buildSearchAppBar(settings, chat)
+          : _buildNormalAppBar(context, settings, chat, appearance),
+      body: Column(
+        children: [
+          // 더 불러오기 인디케이터
+          if (chat.hasMore)
+            Semantics(
+              label: settings.t('이전 메시지 로드 중', 'Loading earlier messages'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      settings.t('이전 메시지 불러오는 중...', 'Loading earlier messages...'),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Error banner
+          if (chat.status == ChatStatus.error &&
+              chat.errorMessage != null)
+            _ErrorBanner(
+              message: chat.errorMessage!,
+              onDismiss: () => chat.clearError(),
+            ),
+
+          // Messages
+          Expanded(
+            child: _buildMessageList(chat, settings),
+          ),
+
+          // Input (검색 중엔 숨김)
+          if (!_showSearch)
+            ChatInput(
+              enabled: !chat.isLoading,
+              onSend: (text) {
+                final s = context.read<SettingsProvider>();
+                chat
+                    .sendMessage(
+                      widget.character,
+                      text,
+                      historyCount: s.historyCount,
+                    )
+                    .then((_) {
+                  if (mounted && chat.allMessages.isNotEmpty) {
+                    final lastAi = chat.allMessages.lastWhere(
+                      (m) => !m.isUser,
+                      orElse: () => chat.allMessages.last,
+                    );
+                    context
+                        .read<CharacterProvider>()
+                        .updateLastMessage(
+                            widget.character.id, lastAi.content);
+                  }
+                });
+                _scrollToBottom();
+              },
+              onRegenerate: chat.allMessages.isNotEmpty &&
+                      !chat.isLoading
+                  ? () {
+                      final s = context.read<SettingsProvider>();
+                      chat.regenerateLastResponse(
+                        widget.character,
+                        historyCount: s.historyCount,
+                      );
+                    }
+                  : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  AppBar _buildNormalAppBar(
+    BuildContext context,
+    SettingsProvider settings,
+    ChatProvider chat,
+    dynamic appearance,
+  ) {
+    return AppBar(
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+      titleSpacing: 0,
+      leading: Semantics(
+        label: settings.t('뒤로 가기', 'Go back'),
+        child: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: appearance.color.withOpacity(0.25),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  widget.character.avatarEmoji,
-                  style: const TextStyle(fontSize: 20),
-                ),
+      ),
+      title: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: appearance.color.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                widget.character.avatarEmoji,
+                style: const TextStyle(fontSize: 20),
               ),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.character.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.character.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                 ),
-                Text(
-                  widget.character.relationship.label(settings.locale),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: appearance.color,
-                    fontWeight: FontWeight.w500,
-                  ),
+              ),
+              Text(
+                widget.character.relationship
+                    .label(settings.locale),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: appearance.color,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        Semantics(
+          label: settings.t('검색', 'Search'),
+          child: IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () => setState(() => _showSearch = true),
+          ),
         ),
-        actions: [
-          PopupMenuButton<String>(
+        Semantics(
+          label: settings.t('더 보기', 'More options'),
+          child: PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
             onSelected: (val) {
               if (val == 'clear') _confirmClear(context, settings);
+              if (val == 'export') _exportChat(context, settings, chat);
+              if (val == 'copy') _copyChat(context, settings, chat);
             },
             itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'export',
+                child: Row(
+                  children: [
+                    const Icon(Icons.share_rounded),
+                    const SizedBox(width: 8),
+                    Text(settings.t('대화 공유', 'Share chat')),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'copy',
+                child: Row(
+                  children: [
+                    const Icon(Icons.copy_rounded),
+                    const SizedBox(width: 8),
+                    Text(settings.t('대화 복사', 'Copy chat')),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'clear',
                 child: Row(
                   children: [
-                    const Icon(Icons.delete_outline, color: Colors.red),
+                    const Icon(Icons.delete_outline,
+                        color: Colors.red),
                     const SizedBox(width: 8),
                     Text(settings.t('대화 초기화', 'Clear chat')),
                   ],
@@ -121,53 +265,66 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Error banner
-          if (chat.status == ChatStatus.error && chat.errorMessage != null)
-            _ErrorBanner(
-              message: chat.errorMessage!,
-              onDismiss: () => chat.clearError(),
-            ),
-          // Messages
-          Expanded(
-            child: _buildMessageList(chat),
-          ),
-          // Input
-          ChatInput(
-            enabled: !chat.isLoading,
-            onSend: (text) {
-              chat.sendMessage(widget.character, text).then((_) {
-                // Update last message on character card
-                if (mounted && chat.messages.isNotEmpty) {
-                  final lastAi = chat.messages.lastWhere(
-                    (m) => !m.isUser,
-                    orElse: () => chat.messages.last,
-                  );
-                  context
-                      .read<CharacterProvider>()
-                      .updateLastMessage(widget.character.id, lastAi.content);
-                }
-              });
-              _scrollToBottom();
-            },
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMessageList(ChatProvider chat) {
+  AppBar _buildSearchAppBar(
+      SettingsProvider settings, ChatProvider chat) {
+    return AppBar(
+      leading: Semantics(
+        label: settings.t('검색 닫기', 'Close search'),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded),
+          onPressed: () {
+            setState(() => _showSearch = false);
+            _searchController.clear();
+            chat.clearSearch();
+          },
+        ),
+      ),
+      title: TextField(
+        controller: _searchController,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: settings.t('메시지 검색...', 'Search messages...'),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        onChanged: (q) => chat.setSearch(q),
+      ),
+      actions: [
+        if (_searchController.text.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.clear_rounded),
+            onPressed: () {
+              _searchController.clear();
+              chat.clearSearch();
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMessageList(ChatProvider chat, SettingsProvider settings) {
     final messages = chat.messages;
     final isLoading = chat.isLoading;
 
     if (messages.isEmpty && !isLoading) {
+      if (chat.isSearching) {
+        return Center(
+          child: Text(
+            settings.t('검색 결과가 없어요.', 'No messages found.'),
+            style: const TextStyle(color: Colors.grey),
+          ),
+        );
+      }
       return _WelcomeMessage(character: widget.character);
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _scrollToBottom());
 
     return ListView.builder(
       controller: _scrollController,
@@ -177,19 +334,70 @@ class _ChatScreenState extends State<ChatScreen> {
         if (i == messages.length && isLoading) {
           return TypingIndicator(character: widget.character);
         }
+        final msg = messages[i];
         return MessageBubble(
-          message: messages[i],
+          message: msg,
           character: widget.character,
+          highlight: chat.isSearching ? chat.searchQuery : null,
         );
       },
     );
   }
 
-  void _confirmClear(BuildContext context, SettingsProvider settings) {
+  void _exportChat(
+      BuildContext context, SettingsProvider settings, ChatProvider chat) {
+    final messages = chat.allMessages;
+    if (messages.isEmpty) return;
+
+    final fmt = DateFormat('yyyy-MM-dd HH:mm');
+    final buf = StringBuffer();
+    buf.writeln('=== ${widget.character.name} ===');
+    buf.writeln();
+    for (final m in messages) {
+      final who = m.isUser
+          ? settings.t('나', 'Me')
+          : widget.character.name;
+      buf.writeln('[${fmt.format(m.timestamp)}] $who');
+      buf.writeln(m.content);
+      buf.writeln();
+    }
+    Share.share(buf.toString(),
+        subject:
+            '${widget.character.name} ${settings.t("대화 기록", "Chat History")}');
+  }
+
+  void _copyChat(
+      BuildContext context, SettingsProvider settings, ChatProvider chat) {
+    final messages = chat.allMessages;
+    if (messages.isEmpty) return;
+
+    final fmt = DateFormat('yyyy-MM-dd HH:mm');
+    final buf = StringBuffer();
+    for (final m in messages) {
+      final who = m.isUser
+          ? settings.t('나', 'Me')
+          : widget.character.name;
+      buf.writeln('[$who ${fmt.format(m.timestamp)}] ${m.content}');
+    }
+    Clipboard.setData(ClipboardData(text: buf.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(settings.t('대화가 복사됐어요!', 'Chat copied!')),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _confirmClear(
+      BuildContext context, SettingsProvider settings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: Text(settings.t('대화 초기화', 'Clear Chat')),
         content: Text(settings.t(
           '모든 대화 기록이 삭제됩니다.',
@@ -202,7 +410,9 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<ChatProvider>().clearHistory(widget.character.id);
+              context
+                  .read<ChatProvider>()
+                  .clearHistory(widget.character.id);
               Navigator.pop(ctx);
             },
             child: Text(

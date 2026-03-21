@@ -52,6 +52,37 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // ── 테마 ───────────────────────────────────────────────
+          _SectionTitle(label: settings.t('테마', 'Theme')),
+          _Card(
+            child: Column(
+              children: [
+                _ThemeTile(
+                  icon: Icons.light_mode_rounded,
+                  label: settings.t('라이트 모드', 'Light'),
+                  value: ThemeMode.light,
+                  groupValue: settings.themeMode,
+                  onChanged: (v) => settings.setThemeMode(v!),
+                ),
+                _ThemeTile(
+                  icon: Icons.dark_mode_rounded,
+                  label: settings.t('다크 모드', 'Dark'),
+                  value: ThemeMode.dark,
+                  groupValue: settings.themeMode,
+                  onChanged: (v) => settings.setThemeMode(v!),
+                ),
+                _ThemeTile(
+                  icon: Icons.brightness_auto_rounded,
+                  label: settings.t('시스템 설정', 'System'),
+                  value: ThemeMode.system,
+                  groupValue: settings.themeMode,
+                  onChanged: (v) => settings.setThemeMode(v!),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // ── 언어 ───────────────────────────────────────────────
           _SectionTitle(label: settings.t('언어', 'Language')),
           _Card(
@@ -76,6 +107,116 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // ── AI 파라미터 ───────────────────────────────────────
+          _SectionTitle(label: settings.t('AI 파라미터', 'AI Parameters')),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Temperature
+                _ParamRow(
+                  label: settings.t('창의성 (Temperature)', 'Creativity (Temperature)'),
+                  value: settings.temperature.toStringAsFixed(1),
+                  hint: settings.t(
+                    '낮을수록 일관된 답변, 높을수록 창의적인 답변',
+                    'Lower = consistent, Higher = creative',
+                  ),
+                ),
+                Slider(
+                  value: settings.temperature,
+                  min: 0.1,
+                  max: 2.0,
+                  divisions: 19,
+                  activeColor: const Color(0xFF7C5CBF),
+                  onChanged: (v) => settings.setTemperature(v),
+                ),
+                const SizedBox(height: 8),
+
+                // History Count
+                _ParamRow(
+                  label: settings.t('대화 기억 개수', 'Conversation memory'),
+                  value: settings.t(
+                    '${settings.historyCount}개',
+                    '${settings.historyCount} msgs',
+                  ),
+                  hint: settings.t(
+                    'AI가 참고하는 이전 메시지 수',
+                    'Number of previous messages AI references',
+                  ),
+                ),
+                Slider(
+                  value: settings.historyCount.toDouble(),
+                  min: 1,
+                  max: 30,
+                  divisions: 29,
+                  activeColor: const Color(0xFF7C5CBF),
+                  onChanged: (v) =>
+                      settings.setHistoryCount(v.round()),
+                ),
+                const SizedBox(height: 8),
+
+                // Context Length
+                _ParamRow(
+                  label: settings.t('컨텍스트 길이', 'Context Length'),
+                  value: '${settings.contextLength}',
+                  hint: settings.t(
+                    '높을수록 더 긴 대화 가능 (메모리 사용 증가)',
+                    'Higher = longer context (more memory)',
+                  ),
+                ),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: settings.contextLength,
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(12),
+                    items: const [512, 1024, 2048, 4096].map((v) {
+                      return DropdownMenuItem(
+                        value: v,
+                        child: Text('$v tokens'),
+                      );
+                    }).toList(),
+                    onChanged: (v) =>
+                        settings.setContextLength(v!),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => settings.resetLlmParams(),
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: Text(settings.t('기본값으로 재설정', 'Reset to defaults')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF7B6F8A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          _Card(
+            color: const Color(0xFFFFF8E7),
+            child: Row(
+              children: [
+                const Text('⚠️', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    settings.t(
+                      'AI 파라미터 변경은 다음 앱 재시작 시 적용됩니다.',
+                      'AI parameter changes apply on next app restart.',
+                    ),
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF7B6F8A)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // ── 모델 관리 ──────────────────────────────────────────
           _SectionTitle(label: settings.t('모델 관리', 'Model Management')),
           _Card(
@@ -92,7 +233,8 @@ class SettingsScreen extends StatelessWidget {
                         children: [
                           const Text(
                             'Llama 3.2 1B Instruct Q4_K_M',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            style:
+                                TextStyle(fontWeight: FontWeight.w700),
                           ),
                           Text(
                             settings.t(
@@ -117,7 +259,8 @@ class SettingsScreen extends StatelessWidget {
                     side: const BorderSide(color: Colors.red),
                   ),
                   icon: const Icon(Icons.delete_outline, size: 18),
-                  label: Text(settings.t('모델 삭제 및 재다운로드', 'Delete & Re-download')),
+                  label: Text(
+                      settings.t('모델 삭제 및 재다운로드', 'Delete & Re-download')),
                 ),
               ],
             ),
@@ -136,7 +279,8 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       settings.t('SoulPal 특징', 'About SoulPal'),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -174,24 +318,29 @@ class SettingsScreen extends StatelessWidget {
                     '로컬 AI로 만드는 나만의 가상 친구',
                     'Your virtual friend powered by on-device AI',
                   ),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF7B6F8A)),
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF7B6F8A)),
                 ),
                 const SizedBox(height: 4),
-                const Text('v1.0.0',
-                    style: TextStyle(fontSize: 12, color: Color(0xFFB0A8C8))),
+                const Text('v1.1.0',
+                    style: TextStyle(
+                        fontSize: 12, color: Color(0xFFB0A8C8))),
               ],
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  void _confirmDeleteModel(BuildContext context, SettingsProvider settings) {
+  void _confirmDeleteModel(
+      BuildContext context, SettingsProvider settings) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: Text(settings.t('모델 삭제', 'Delete Model')),
         content: Text(settings.t(
           '모델 파일을 삭제하면 앱 재시작 시 다시 다운로드됩니다.',
@@ -229,6 +378,89 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+// ─── 파라미터 행 ─────────────────────────────────────────────────────────────
+class _ParamRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String hint;
+
+  const _ParamRow({
+    required this.label,
+    required this.value,
+    required this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14)),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C5CBF).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Color(0xFF7C5CBF),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Text(hint,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF7B6F8A))),
+      ],
+    );
+  }
+}
+
+// ─── 테마 타일 ────────────────────────────────────────────────────────────────
+class _ThemeTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ThemeMode value;
+  final ThemeMode groupValue;
+  final ValueChanged<ThemeMode?> onChanged;
+
+  const _ThemeTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RadioListTile<ThemeMode>(
+      value: value,
+      groupValue: groupValue,
+      activeColor: const Color(0xFF7C5CBF),
+      onChanged: onChanged,
+      title: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF7B6F8A)),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── 공통 위젯 ────────────────────────────────────────────────────────────────
 class _SectionTitle extends StatelessWidget {
   final String label;
   const _SectionTitle({required this.label});
@@ -257,11 +489,14 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultColor = isDark ? const Color(0xFF2E2544) : Colors.white;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color ?? Colors.white,
+        color: color ?? defaultColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: color == null
             ? [
@@ -289,11 +524,13 @@ class _Tip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(color: Color(0xFF7C5CBF))),
+          const Text('• ',
+              style: TextStyle(color: Color(0xFF7C5CBF))),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF2D2040)),
+              style: const TextStyle(
+                  fontSize: 13, color: Color(0xFF2D2040)),
             ),
           ),
         ],

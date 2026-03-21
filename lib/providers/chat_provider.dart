@@ -18,33 +18,93 @@ class ChatProvider extends ChangeNotifier {
   ChatStatus _status = ChatStatus.idle;
   String? _errorMessage;
 
+  // pagination
+  static const int _pageSize = 30;
+  int _loadedCount = _pageSize;
+  bool _hasMore = false;
+
+  // search
+  String _searchQuery = '';
+
   ChatProvider(SharedPreferences prefs)
       : _storage = StorageService(prefs);
 
-  List<Message> get messages => List.unmodifiable(_messages);
+  List<Message> get messages {
+    if (_searchQuery.isEmpty) {
+      return List.unmodifiable(_messages);
+    }
+    final q = _searchQuery.toLowerCase();
+    return _messages
+        .where((m) => m.content.toLowerCase().contains(q))
+        .toList();
+  }
+
+  List<Message> get allMessages => List.unmodifiable(_messages);
   ChatStatus get status => _status;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _status == ChatStatus.loading;
   bool get isLlmReady => _llm.isReady;
+  bool get hasMore => _hasMore;
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _searchQuery.isNotEmpty;
 
-  // ─── LLM 초기화 (splash에서 호출) ───────────────────────────
-  Future<void> initializeLlm(String modelPath) async {
-    await _llm.initialize(modelPath);
+  // ─── LLM 초기화 ──────────────────────────────────────────────
+  Future<void> initializeLlm(
+    String modelPath, {
+    double temperature = 0.8,
+    int contextLength = 2048,
+  }) async {
+    await _llm.initialize(
+      modelPath,
+      temperature: temperature,
+      contextLength: contextLength,
+    );
     notifyListeners();
   }
 
-  // ─── 채팅 로드 ───────────────────────────────────────────────
+  // ─── 채팅 로드 (페이지네이션) ────────────────────────────────
   void loadChat(String characterId) {
     if (_currentCharacterId == characterId) return;
     _currentCharacterId = characterId;
-    _messages = _storage.loadMessages(characterId);
+    _searchQuery = '';
+    final all = _storage.loadMessages(characterId);
+    _hasMore = all.length > _pageSize;
+    _loadedCount = _hasMore ? _pageSize : all.length;
+    _messages = _hasMore
+        ? all.sublist(all.length - _loadedCount)
+        : List.from(all);
     _status = ChatStatus.idle;
     _errorMessage = null;
     notifyListeners();
   }
 
+  void loadMoreMessages() {
+    if (!_hasMore || _currentCharacterId == null) return;
+    final all = _storage.loadMessages(_currentCharacterId!);
+    final newCount = (_loadedCount + _pageSize).clamp(0, all.length);
+    _hasMore = newCount < all.length;
+    _loadedCount = newCount;
+    _messages = all.sublist(all.length - _loadedCount);
+    notifyListeners();
+  }
+
+  // ─── 검색 ────────────────────────────────────────────────────
+  void setSearch(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    _searchQuery = '';
+    notifyListeners();
+  }
+
   // ─── 메시지 전송 ─────────────────────────────────────────────
-  Future<void> sendMessage(Character character, String text) async {
+  Future<void> sendMessage(
+    Character character,
+    String text, {
+    int historyCount = 10,
+  }) async {
     if (text.trim().isEmpty || _status == ChatStatus.loading) return;
 
     final userMsg = Message(
@@ -65,6 +125,57 @@ class ChatProvider extends ChangeNotifier {
         character: character,
         history: _messages.sublist(0, _messages.length - 1),
         userMessage: text.trim(),
+        historyCount: historyCount,
+      );
+
+      _messages.add(Message(
+        id: _uuid.v4(),
+        characterId: character.id,
+        content: reply,
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+
+      _status = ChatStatus.idle;
+      await _storage.saveMessages(character.id, _messages);
+    } catch (e) {
+      _status = ChatStatus.error;
+      _errorMessage = e.toString();
+    }
+
+    notifyListeners();
+  }
+
+  // ─── AI 응답 재생성 ──────────────────────────────────────────
+  Future<void> regenerateLastResponse(
+    Character character, {
+    int historyCount = 10,
+  }) async {
+    if (_status == ChatStatus.loading) return;
+
+    // 마지막 AI 메시지 제거
+    if (_messages.isNotEmpty && !_messages.last.isUser) {
+      _messages.removeLast();
+    }
+
+    if (_messages.isEmpty || !_messages.last.isUser) return;
+
+    final lastUserMsg = _messages.last;
+    _messages.removeLast();
+
+    _status = ChatStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    // 유저 메시지 다시 추가
+    _messages.add(lastUserMsg);
+
+    try {
+      final reply = await _llm.chat(
+        character: character,
+        history: _messages.sublist(0, _messages.length - 1),
+        userMessage: lastUserMsg.content,
+        historyCount: historyCount,
       );
 
       _messages.add(Message(
@@ -87,6 +198,8 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> clearHistory(String characterId) async {
     _messages.clear();
+    _hasMore = false;
+    _loadedCount = _pageSize;
     await _storage.clearMessages(characterId);
     notifyListeners();
   }

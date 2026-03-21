@@ -9,13 +9,15 @@ class SoulPalApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.watch<SettingsProvider>().locale;
+    final settings = context.watch<SettingsProvider>();
 
     return MaterialApp(
       title: 'SoulPal',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      locale: Locale(locale),
+      darkTheme: AppTheme.darkTheme,
+      themeMode: settings.themeMode,
+      locale: Locale(settings.locale),
       supportedLocales: const [Locale('ko'), Locale('en')],
       home: const SplashScreen(),
     );

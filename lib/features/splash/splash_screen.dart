@@ -5,6 +5,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/model_manager.dart';
 import '../home/home_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 
 enum _Phase {
   checking,    // 모델 파일 확인 중
@@ -114,9 +115,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _goHome() {
+    final settings = context.read<SettingsProvider>();
+    final destination = settings.onboardingDone
+        ? const HomeScreen()
+        : const OnboardingScreen();
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const HomeScreen(),
+        pageBuilder: (_, __, ___) => destination,
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
