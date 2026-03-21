@@ -8,13 +8,12 @@
 
 ### 최신 버전 다운로드
 
-👉 **[Releases 페이지에서 APK 다운로드](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest)**
+| 기기 | 다운로드 |
+|------|----------|
+| 최신 안드로이드 폰 (권장) | [⬇️ SoulPal-arm64.apk](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest/download/SoulPal-arm64.apk) |
+| 구형 안드로이드 폰 | [⬇️ SoulPal-arm32.apk](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest/download/SoulPal-arm32.apk) |
 
-| APK 파일 | 기기 |
-|----------|------|
-| `SoulPal-arm64.apk` | 최신 안드로이드 폰 **← 대부분 이걸로** |
-| `SoulPal-arm32.apk` | 구형 안드로이드 폰 |
-| `SoulPal-x86_64.apk` | 에뮬레이터 |
+> 어떤 걸 받을지 모르겠다면 **arm64** 를 받으세요.
 
 ### 설치 방법
 
