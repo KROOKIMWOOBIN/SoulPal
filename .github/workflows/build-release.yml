@@ -68,7 +68,7 @@ jobs:
           python3 - << 'PYEOF'
           import re, sys, os
 
-          # ── build.gradle 패치 (NDK + minSdk) ──────────────────
+          # ── build.gradle 패치 (NDK + minSdk + signingConfigs) ──
           kts    = 'android/app/build.gradle.kts'
           groovy = 'android/app/build.gradle'
           path   = kts if os.path.exists(kts) else groovy
@@ -77,23 +77,21 @@ jobs:
           with open(path) as f:
               content = f.read()
 
+          # ndkVersion 패치
           content, n = re.subn(r'ndkVersion\s*=\s*flutter\.ndkVersion',
                                 'ndkVersion = "27.0.12077973"', content)
           if n == 0:
               content, _ = re.subn(r'ndkVersion\s+flutter\.ndkVersion',
                                    'ndkVersion "27.0.12077973"', content)
 
+          # minSdk 패치
           content, n = re.subn(r'minSdk\s*=\s*flutter\.minSdkVersion',
                                 'minSdk = 23', content)
           if n == 0:
               content, _ = re.subn(r'minSdkVersion\s+flutter\.minSdkVersion',
                                    'minSdkVersion 23', content)
 
-          # ── signingConfigs 패치 ────────────────────────────────
-          # env vars 기반 릴리즈 서명 설정 삽입
-          with open(path) as f:
-              content = f.read()
-
+          # signingConfigs 패치 (같은 content에 이어서 적용)
           signing_block = (
               '\n    signingConfigs {\n'
               '        create("release") {\n'
@@ -112,14 +110,13 @@ jobs:
               content = content.replace(
                   'signingConfigs.getByName("debug")',
                   'signingConfigs.getByName("release")')
-              with open(path, 'w') as f:
-                  f.write(content)
               print("  signingConfigs 패치 완료")
           else:
               print("  signingConfigs 이미 존재 — 스킵")
 
-          with open(path) as f:
-              content = f.read()
+          # 모든 패치 한 번에 저장
+          with open(path, 'w') as f:
+              f.write(content)
 
           if 'flutter.minSdkVersion' in content:
               print("ERROR: minSdk patch failed!")
