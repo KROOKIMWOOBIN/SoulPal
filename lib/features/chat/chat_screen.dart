@@ -58,12 +58,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    // 스크롤이 맨 위에 도달하면 더 불러오기
+    if (!mounted || !_scrollController.hasClients) return;
     if (_scrollController.position.pixels <=
         _scrollController.position.minScrollExtent + 80) {
       final chat = context.read<ChatProvider>();
-      if (chat.hasMore) {
+      if (chat.hasMore && !chat.isLoading) {
         chat.loadMoreMessages();
       }
     }
@@ -148,14 +147,16 @@ class _ChatScreenState extends State<ChatScreen> {
               onSend: (text) {
                 final s = context.read<SettingsProvider>();
                 final characterProvider = context.read<CharacterProvider>();
+                final historyCount = s.historyCount;
                 chat
                     .sendMessage(
                       widget.character,
                       text,
-                      historyCount: s.historyCount,
+                      historyCount: historyCount,
                     )
                     .then((_) {
-                  if (mounted && chat.allMessages.isNotEmpty) {
+                  if (!mounted) return;
+                  if (chat.allMessages.isNotEmpty) {
                     final lastAi = chat.allMessages.lastWhere(
                       (m) => !m.isUser,
                       orElse: () => chat.allMessages.last,

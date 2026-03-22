@@ -143,7 +143,11 @@ class ChatProvider extends ChangeNotifier {
       );
 
       // 응답 대기 중 다른 캐릭터로 이동한 경우 결과 폐기
-      if (_currentCharacterId != character.id) return;
+      if (_currentCharacterId != character.id) {
+        _status = ChatStatus.idle;
+        notifyListeners();
+        return;
+      }
 
       _messages.add(Message(
         id: _uuid.v4(),
@@ -154,9 +158,14 @@ class ChatProvider extends ChangeNotifier {
       ));
 
       _status = ChatStatus.idle;
+      _errorMessage = null;
       await _storage.saveMessages(character.id, _messages);
     } catch (e) {
-      if (_currentCharacterId != character.id) return;
+      if (_currentCharacterId != character.id) {
+        _status = ChatStatus.idle;
+        notifyListeners();
+        return;
+      }
       _status = ChatStatus.error;
       _errorMessage = e.toString();
       showGlobalError('AI 응답 오류: $e');
@@ -197,7 +206,11 @@ class ChatProvider extends ChangeNotifier {
         historyCount: historyCount,
       );
 
-      if (_currentCharacterId != character.id) return;
+      if (_currentCharacterId != character.id) {
+        _status = ChatStatus.idle;
+        notifyListeners();
+        return;
+      }
 
       _messages.add(Message(
         id: _uuid.v4(),
@@ -208,9 +221,14 @@ class ChatProvider extends ChangeNotifier {
       ));
 
       _status = ChatStatus.idle;
+      _errorMessage = null;
       await _storage.saveMessages(character.id, _messages);
     } catch (e) {
-      if (_currentCharacterId != character.id) return;
+      if (_currentCharacterId != character.id) {
+        _status = ChatStatus.idle;
+        notifyListeners();
+        return;
+      }
       _status = ChatStatus.error;
       _errorMessage = e.toString();
       showGlobalError('AI 응답 재생성 오류: $e');

@@ -19,7 +19,8 @@ class SettingsProvider extends ChangeNotifier {
 
   SettingsProvider(this._prefs)
       : _locale = _prefs.getString(_localeKey) ?? 'ko',
-        _themeMode = ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0],
+        _themeMode = ThemeMode.values[(_prefs.getInt(_themeModeKey) ?? 0)
+                .clamp(0, ThemeMode.values.length - 1)],
         _temperature = _prefs.getDouble(_temperatureKey) ?? 0.8,
         _contextLength = _prefs.getInt(_contextLengthKey) ?? 2048,
         _historyCount = _prefs.getInt(_historyCountKey) ?? 10,

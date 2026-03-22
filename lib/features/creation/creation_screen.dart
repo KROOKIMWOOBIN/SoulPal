@@ -23,11 +23,11 @@ class _CreationScreenState extends State<CreationScreen> {
   int _step = 0;
   static const int _totalSteps = 6;
 
-  late String? _relationshipId;
-  late String? _personalityId;
-  late String? _speechStyleId;
-  late final Set<String> _interestIds;
-  late String? _appearanceId;
+  String? _relationshipId;
+  String? _personalityId;
+  String? _speechStyleId;
+  Set<String> _interestIds = {};
+  String? _appearanceId;
   late final TextEditingController _nameController;
   bool _nameEdited = false;
 

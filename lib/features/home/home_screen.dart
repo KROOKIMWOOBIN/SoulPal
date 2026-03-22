@@ -32,9 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkUpdate() async {
-    final info = await UpdateService.checkForUpdate();
-    if (mounted && info != null) {
-      setState(() => _updateInfo = info);
+    try {
+      final info = await UpdateService.checkForUpdate();
+      if (mounted && info != null) {
+        setState(() => _updateInfo = info);
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] 업데이트 확인 실패: $e');
     }
   }
 

@@ -135,6 +135,10 @@ class ModelManager {
         );
       }
 
+      // 서버가 Range 요청을 무시하고 200 전체 응답 — 기존 부분 파일 삭제
+      if (startByte > 0 && response.statusCode == 200) {
+        await file.delete();
+      }
       final effectiveStart =
           (startByte > 0 && response.statusCode == 200) ? 0 : startByte;
 
