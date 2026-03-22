@@ -31,21 +31,52 @@ class ModelManager {
       '/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 
   static const _filename = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
-  static const _minValidSize = 700 * 1024 * 1024; // 700MB (실제 크기 ~800MB)
+  static const _minValidSize = 700 * 1024 * 1024; // 700MB
   static const _maxRetries = 3;
 
-  // ─── 경로 ────────────────────────────────────────────────────
+  // ─── 저장 경로 ────────────────────────────────────────────────
+  // 외부 앱 저장소 우선 사용 (/sdcard/Android/data/<pkg>/files/)
+  // → 앱 업데이트 시 유지됨 (앱 삭제 시에만 제거)
+  // 외부 저장소 사용 불가 시 내부 저장소 fallback
   static Future<String> get modelPath async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await _storageDir();
     return '${dir.path}/$_filename';
   }
 
-  // ─── 상태 확인 ───────────────────────────────────────────────
+  static Future<Directory> _storageDir() async {
+    final external = await getExternalStorageDirectory();
+    if (external != null) return external;
+    return getApplicationDocumentsDirectory();
+  }
+
+  // ─── 상태 확인 (구 경로 자동 마이그레이션 포함) ──────────────
   static Future<bool> isReady() async {
+    await _migrateIfNeeded();
     final path = await modelPath;
     final file = File(path);
     if (!file.existsSync()) return false;
     return (await file.length()) >= _minValidSize;
+  }
+
+  /// 내부 저장소에 모델이 있으면 외부 저장소로 이동 (1회)
+  static Future<void> _migrateIfNeeded() async {
+    final external = await getExternalStorageDirectory();
+    if (external == null) return; // 외부 저장소 없으면 마이그레이션 불필요
+
+    final newPath = '${external.path}/$_filename';
+    if (File(newPath).existsSync()) return; // 이미 외부에 있음
+
+    final internalDir = await getApplicationDocumentsDirectory();
+    final oldPath = '${internalDir.path}/$_filename';
+    final oldFile = File(oldPath);
+
+    if (!oldFile.existsSync()) return;
+    final size = await oldFile.length();
+    if (size < _minValidSize) return; // 불완전한 파일이면 무시
+
+    // 복사 후 구 파일 삭제
+    await oldFile.copy(newPath);
+    await oldFile.delete();
   }
 
   static Future<int> _downloadedBytes() async {
@@ -59,7 +90,7 @@ class ModelManager {
     for (int attempt = 1; attempt <= _maxRetries; attempt++) {
       try {
         yield* _downloadOnce();
-        return; // 성공 시 종료
+        return;
       } on SocketException catch (e) {
         if (attempt == _maxRetries) {
           throw Exception('네트워크 연결 오류 (소켓): $e\n인터넷 연결을 확인해주세요.');
@@ -72,7 +103,6 @@ class ModelManager {
         await Future.delayed(Duration(seconds: attempt * 2));
       } on Exception catch (e) {
         final msg = e.toString();
-        // 서버 오류(5xx)만 재시도, 클라이언트 오류(4xx)는 즉시 실패
         if (msg.contains('HTTP 4') || attempt == _maxRetries) rethrow;
         await Future.delayed(Duration(seconds: attempt * 2));
       }
@@ -105,7 +135,6 @@ class ModelManager {
         );
       }
 
-      // 이어받기인데 서버가 206이 아닌 200을 반환하면 처음부터 다시
       final effectiveStart =
           (startByte > 0 && response.statusCode == 200) ? 0 : startByte;
 
