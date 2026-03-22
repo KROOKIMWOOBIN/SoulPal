@@ -156,7 +156,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pub-cache
-          key: pub-${{ hashFiles('pubspec.yaml') }}
+          key: pub-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
           restore-keys: pub-
 
       # ── Gradle 캐시 ──────────────────────────────────────────
