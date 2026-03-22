@@ -37,7 +37,13 @@ class StorageService {
   List<Message> loadMessages(String characterId) {
     final raw = _prefs.getString('$_messagesPrefix$characterId');
     if (raw == null) return [];
-    return Message.fromJsonList(raw);
+    try {
+      return Message.fromJsonList(raw);
+    } catch (_) {
+      // 저장된 데이터가 손상되었을 경우 비우고 복구
+      _prefs.remove('$_messagesPrefix$characterId');
+      return [];
+    }
   }
 
   Future<void> saveMessages(String characterId, List<Message> messages) async {

@@ -23,13 +23,19 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   bool _showSearch = false;
+  String? _initError;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final chat = context.read<ChatProvider>();
-      chat.loadChat(widget.character.id);
+      if (!mounted) return;
+      try {
+        final chat = context.read<ChatProvider>();
+        chat.loadChat(widget.character.id);
+      } catch (e) {
+        if (mounted) setState(() => _initError = e.toString());
+      }
     });
     _scrollController.addListener(_onScroll);
   }
@@ -75,7 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: _showSearch
           ? _buildSearchAppBar(settings, chat)
           : _buildNormalAppBar(context, settings, chat, appearance),
-      body: Column(
+      body: _initError != null
+          ? _buildInitErrorBody(_initError!)
+          : Column(
         children: [
           // 더 불러오기 인디케이터
           if (chat.hasMore)
@@ -152,6 +160,53 @@ class _ChatScreenState extends State<ChatScreen> {
                   : null,
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInitErrorBody(String error) {
+    final settings = context.read<SettingsProvider>();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              settings.t('채팅을 불러오지 못했습니다', 'Failed to load chat'),
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() => _initError = null);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  try {
+                    context.read<ChatProvider>().loadChat(widget.character.id);
+                  } catch (e) {
+                    if (mounted) setState(() => _initError = e.toString());
+                  }
+                });
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(settings.t('다시 시도', 'Retry')),
+            ),
+          ],
+        ),
       ),
     );
   }
