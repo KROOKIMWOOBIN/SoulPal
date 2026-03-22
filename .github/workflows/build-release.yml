@@ -33,7 +33,27 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create Flutter project scaffold
+      # ── pub 패키지 캐시 ──────────────────────────────────────
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-
+
+      # ── Gradle 캐시 ──────────────────────────────────────────
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      # ── android/ scaffold: 커밋된 경우 건너뜀 ─────────────────
+      - name: Create Flutter project scaffold (android/ 없을 때만)
+        if: ${{ !hashFiles('android/') }}
         run: |
           cp pubspec.yaml /tmp/pubspec.yaml.bak
           cp -r lib /tmp/lib_bak
@@ -47,12 +67,12 @@ jobs:
           rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
           rm -rf vendor && cp -r /tmp/vendor_bak vendor
 
-      - name: Patch android build.gradle (NDK + minSdk)
+      - name: Apply Android patches (NDK + minSdk + permissions)
         run: |
           python3 - << 'EOF'
           import re, sys, os
 
-          # Find the gradle file
+          # ── build.gradle 패치 ──────────────────────────────────
           kts = 'android/app/build.gradle.kts'
           groovy = 'android/app/build.gradle'
           path = kts if os.path.exists(kts) else groovy
@@ -61,80 +81,64 @@ jobs:
           with open(path) as f:
               content = f.read()
 
-          # Show before
           for line in content.splitlines():
               if 'minSdk' in line or 'ndkVersion' in line:
                   print(f"  BEFORE: {line.strip()}")
 
-          # Patch NDK
-          content, n = re.subn(
-              r'ndkVersion\s*=\s*flutter\.ndkVersion',
-              'ndkVersion = "27.0.12077973"', content)
+          content, n = re.subn(r'ndkVersion\s*=\s*flutter\.ndkVersion',
+                                'ndkVersion = "27.0.12077973"', content)
           if n == 0:
-              content, n = re.subn(
-                  r'ndkVersion\s+flutter\.ndkVersion',
-                  'ndkVersion "27.0.12077973"', content)
+              content, n = re.subn(r'ndkVersion\s+flutter\.ndkVersion',
+                                   'ndkVersion "27.0.12077973"', content)
           print(f"  NDK replacements: {n}")
 
-          # Patch minSdk
-          content, n = re.subn(
-              r'minSdk\s*=\s*flutter\.minSdkVersion',
-              'minSdk = 23', content)
+          content, n = re.subn(r'minSdk\s*=\s*flutter\.minSdkVersion',
+                                'minSdk = 23', content)
           if n == 0:
-              content, n = re.subn(
-                  r'minSdkVersion\s+flutter\.minSdkVersion',
-                  'minSdkVersion 23', content)
+              content, n = re.subn(r'minSdkVersion\s+flutter\.minSdkVersion',
+                                   'minSdkVersion 23', content)
           print(f"  minSdk replacements: {n}")
 
           with open(path, 'w') as f:
               f.write(content)
 
-          # Verify
           for line in content.splitlines():
               if 'minSdk' in line or 'ndkVersion' in line:
                   print(f"  AFTER:  {line.strip()}")
 
-          # Fail if minSdk 21 still present
           if 'flutter.minSdkVersion' in content:
               print("ERROR: minSdk patch failed!")
               sys.exit(1)
-          EOF
 
-      - name: Add INTERNET permission and url_launcher queries to AndroidManifest
-        run: |
-          python3 - << 'EOF'
-          path = 'android/app/src/main/AndroidManifest.xml'
-          with open(path) as f:
-              content = f.read()
+          # ── AndroidManifest 패치 ───────────────────────────────
+          manifest = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest) as f:
+              m = f.read()
 
-          # INTERNET permission
-          if 'INTERNET' not in content:
-              content = content.replace(
+          if 'INTERNET' not in m:
+              m = m.replace(
                   '<application',
                   '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
-                  1
-              )
+                  1)
               print('Added INTERNET permission')
           else:
               print('INTERNET permission already present')
 
-          # url_launcher queries (Android 11+)
-          if '<queries>' not in content:
+          if '<queries>' not in m:
               queries = (
                   '\n    <queries>\n'
                   '        <intent>\n'
                   '            <action android:name="android.intent.action.VIEW" />\n'
                   '            <data android:scheme="https" />\n'
                   '        </intent>\n'
-                  '    </queries>'
-              )
-              content = content.replace('</manifest>', queries + '\n</manifest>', 1)
+                  '    </queries>')
+              m = m.replace('</manifest>', queries + '\n</manifest>', 1)
               print('Added url_launcher queries')
           else:
               print('queries already present')
 
-          with open(path, 'w') as f:
-              f.write(content)
+          with open(manifest, 'w') as f:
+              f.write(m)
           EOF
 
       - name: Get dependencies
@@ -146,9 +150,9 @@ jobs:
       - name: Rename APKs
         run: |
           cd build/app/outputs/flutter-apk
-          mv app-arm64-v8a-release.apk SoulPal-arm64.apk   || true
+          mv app-arm64-v8a-release.apk  SoulPal-arm64.apk  || true
           mv app-armeabi-v7a-release.apk SoulPal-arm32.apk || true
-          mv app-x86_64-release.apk SoulPal-x86_64.apk     || true
+          mv app-x86_64-release.apk     SoulPal-x86_64.apk || true
 
       - name: Get version from tag
         id: version
@@ -176,7 +180,8 @@ jobs:
             | `SoulPal-arm64.apk` | 대부분의 최신 안드로이드 폰 **(권장)** |
             | `SoulPal-arm32.apk` | 구형 안드로이드 폰 |
 
-            > **첫 실행 시 AI 모델 (~800MB) 다운로드가 필요합니다.**
+            > **기존 앱 위에 덮어쓰기 설치 시 AI 모델을 다시 다운로드하지 않습니다.**
+            > **첫 설치 시에만 AI 모델 (~800MB) 다운로드가 필요합니다.**
           files: |
             build/app/outputs/flutter-apk/SoulPal-arm64.apk
             build/app/outputs/flutter-apk/SoulPal-arm32.apk

@@ -8,8 +8,7 @@ build/
 .pub/
 *.iml
 
-# Android (setup.sh로 생성되므로 제외)
-android/
+# Android (android/ 는 커밋됨 — 삭제하지 말 것)
 ios/
 linux/
 macos/
