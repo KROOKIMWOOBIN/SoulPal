@@ -53,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onScroll() {
+    if (!_scrollController.hasClients) return;
     // 스크롤이 맨 위에 도달하면 더 불러오기
     if (_scrollController.position.pixels <=
         _scrollController.position.minScrollExtent + 80) {

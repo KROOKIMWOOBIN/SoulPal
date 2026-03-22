@@ -15,10 +15,15 @@ class StorageService {
   List<Character> loadCharacters() {
     final raw = _prefs.getString(_charactersKey);
     if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list
-        .map((e) => Character.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .map((e) => Character.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      _prefs.remove(_charactersKey);
+      return [];
+    }
   }
 
   Future<void> saveCharacters(List<Character> characters) async {

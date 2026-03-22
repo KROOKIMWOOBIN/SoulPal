@@ -257,17 +257,18 @@ class _CreationScreenState extends State<CreationScreen> {
       createdAt: DateTime.now(),
     );
 
+    final messenger = ScaffoldMessenger.of(context);
+    final label = context
+        .read<SettingsProvider>()
+        .t('${character.name} 친구가 생겼어요! 🎉',
+            '${character.name} is ready to chat! 🎉');
+
     context.read<CharacterProvider>().addCharacter(character);
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          context
-              .read<SettingsProvider>()
-              .t('${character.name} 친구가 생겼어요! 🎉',
-                  '${character.name} is ready to chat! 🎉'),
-        ),
+        content: Text(label),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -284,17 +285,18 @@ class _CreationScreenState extends State<CreationScreen> {
       appearanceId: _appearanceId,
     );
 
+    final messenger = ScaffoldMessenger.of(context);
+    final label = context
+        .read<SettingsProvider>()
+        .t('${updated.name} 정보가 저장됐어요!',
+            '${updated.name}\'s profile updated!');
+
     context.read<CharacterProvider>().updateCharacter(updated);
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          context
-              .read<SettingsProvider>()
-              .t('${updated.name} 정보가 저장됐어요!',
-                  '${updated.name}\'s profile updated!'),
-        ),
+        content: Text(label),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
