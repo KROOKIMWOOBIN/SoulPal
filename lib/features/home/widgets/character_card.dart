@@ -161,10 +161,11 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withOpacity(isDark ? 0.25 : 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -172,7 +173,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: color.withOpacity(0.9),
+          color: isDark ? color : color.withOpacity(0.9),
         ),
       ),
     );

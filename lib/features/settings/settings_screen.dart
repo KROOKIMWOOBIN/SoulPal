@@ -467,7 +467,11 @@ class _ThemeTile extends StatelessWidget {
       onChanged: onChanged,
       title: Row(
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF7B6F8A)),
+          Icon(icon,
+              size: 18,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFFAA9EC4)
+                  : const Color(0xFF7B6F8A)),
           const SizedBox(width: 8),
           Text(label),
         ],

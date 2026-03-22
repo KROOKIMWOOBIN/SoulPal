@@ -462,9 +462,11 @@ class _WelcomeMessage extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             '${character.relationship.label(settings.locale)} • ${character.personality.label(settings.locale)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF7B6F8A),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFFAA9EC4)
+                  : const Color(0xFF7B6F8A),
             ),
           ),
           const SizedBox(height: 20),
