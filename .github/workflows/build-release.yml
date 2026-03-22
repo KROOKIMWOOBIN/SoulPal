@@ -14,12 +14,14 @@ jobs:
       contents: write
 
     steps:
+      # ── 소스 체크아웃 ─────────────────────────────────────────
       - name: Checkout code (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
 
+      # ── Java / Flutter 셋업 ───────────────────────────────────
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -31,7 +33,97 @@ jobs:
         with:
           flutter-version: '3.29.0'
           channel: 'stable'
-          cache: true
+          cache: true   # Flutter SDK 자체 캐시
+
+      # ── android/ 스캐폴드 캐시 ───────────────────────────────
+      # 키: Flutter 버전 + 이 워크플로우 파일 해시
+      # → 워크플로우(패치 로직 포함)가 변경되면 자동 재생성
+      - name: Cache Android scaffold
+        id: android-cache
+        uses: actions/cache@v4
+        with:
+          path: android/
+          key: android-flutter-3.29.0-${{ hashFiles('.github/workflows/build-release.yml') }}
+
+      - name: Generate Android scaffold + apply patches
+        if: steps.android-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "android/ 캐시 미스 — scaffold 생성 중..."
+
+          # 기존 소스 보존
+          cp pubspec.yaml /tmp/pubspec.yaml.bak
+          cp -r lib      /tmp/lib_bak
+          cp -r assets   /tmp/assets_bak 2>/dev/null || true
+          cp -r vendor   /tmp/vendor_bak
+
+          flutter create --project-name soulpal --org com.soulpal \
+            --platforms android . --overwrite --no-pub
+
+          # 소스 복원
+          cp /tmp/pubspec.yaml.bak pubspec.yaml
+          rm -rf lib    && cp -r /tmp/lib_bak    lib
+          rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
+          rm -rf vendor && cp -r /tmp/vendor_bak vendor
+
+          python3 - << 'PYEOF'
+          import re, sys, os
+
+          # ── build.gradle 패치 (NDK + minSdk) ──────────────────
+          kts    = 'android/app/build.gradle.kts'
+          groovy = 'android/app/build.gradle'
+          path   = kts if os.path.exists(kts) else groovy
+          print(f"Patching: {path}")
+
+          with open(path) as f:
+              content = f.read()
+
+          content, n = re.subn(r'ndkVersion\s*=\s*flutter\.ndkVersion',
+                                'ndkVersion = "27.0.12077973"', content)
+          if n == 0:
+              content, _ = re.subn(r'ndkVersion\s+flutter\.ndkVersion',
+                                   'ndkVersion "27.0.12077973"', content)
+
+          content, n = re.subn(r'minSdk\s*=\s*flutter\.minSdkVersion',
+                                'minSdk = 23', content)
+          if n == 0:
+              content, _ = re.subn(r'minSdkVersion\s+flutter\.minSdkVersion',
+                                   'minSdkVersion 23', content)
+
+          with open(path, 'w') as f:
+              f.write(content)
+
+          if 'flutter.minSdkVersion' in content:
+              print("ERROR: minSdk patch failed!")
+              sys.exit(1)
+          print(f"  build.gradle 패치 완료")
+
+          # ── AndroidManifest 패치 ───────────────────────────────
+          manifest = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest) as f:
+              m = f.read()
+
+          if 'INTERNET' not in m:
+              m = m.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
+                  1)
+              print('  INTERNET permission 추가')
+
+          if '<queries>' not in m:
+              queries = (
+                  '\n    <queries>\n'
+                  '        <intent>\n'
+                  '            <action android:name="android.intent.action.VIEW" />\n'
+                  '            <data android:scheme="https" />\n'
+                  '        </intent>\n'
+                  '    </queries>')
+              m = m.replace('</manifest>', queries + '\n</manifest>', 1)
+              print('  url_launcher queries 추가')
+
+          with open(manifest, 'w') as f:
+              f.write(m)
+          print("  AndroidManifest 패치 완료")
+          PYEOF
 
       # ── pub 패키지 캐시 ──────────────────────────────────────
       - name: Cache pub packages
@@ -48,112 +140,25 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      # ── android/ scaffold: 커밋된 경우 건너뜀 ─────────────────
-      - name: Create Flutter project scaffold (android/ 없을 때만)
-        if: ${{ !hashFiles('android/') }}
-        run: |
-          cp pubspec.yaml /tmp/pubspec.yaml.bak
-          cp -r lib /tmp/lib_bak
-          cp -r assets /tmp/assets_bak 2>/dev/null || true
-          cp -r vendor /tmp/vendor_bak
-
-          flutter create --project-name soulpal --org com.soulpal --platforms android . --overwrite --no-pub
-
-          cp /tmp/pubspec.yaml.bak pubspec.yaml
-          rm -rf lib && cp -r /tmp/lib_bak lib
-          rm -rf assets && cp -r /tmp/assets_bak assets 2>/dev/null || true
-          rm -rf vendor && cp -r /tmp/vendor_bak vendor
-
-      - name: Apply Android patches (NDK + minSdk + permissions)
-        run: |
-          python3 - << 'EOF'
-          import re, sys, os
-
-          # ── build.gradle 패치 ──────────────────────────────────
-          kts = 'android/app/build.gradle.kts'
-          groovy = 'android/app/build.gradle'
-          path = kts if os.path.exists(kts) else groovy
-          print(f"Patching: {path}")
-
-          with open(path) as f:
-              content = f.read()
-
-          for line in content.splitlines():
-              if 'minSdk' in line or 'ndkVersion' in line:
-                  print(f"  BEFORE: {line.strip()}")
-
-          content, n = re.subn(r'ndkVersion\s*=\s*flutter\.ndkVersion',
-                                'ndkVersion = "27.0.12077973"', content)
-          if n == 0:
-              content, n = re.subn(r'ndkVersion\s+flutter\.ndkVersion',
-                                   'ndkVersion "27.0.12077973"', content)
-          print(f"  NDK replacements: {n}")
-
-          content, n = re.subn(r'minSdk\s*=\s*flutter\.minSdkVersion',
-                                'minSdk = 23', content)
-          if n == 0:
-              content, n = re.subn(r'minSdkVersion\s+flutter\.minSdkVersion',
-                                   'minSdkVersion 23', content)
-          print(f"  minSdk replacements: {n}")
-
-          with open(path, 'w') as f:
-              f.write(content)
-
-          for line in content.splitlines():
-              if 'minSdk' in line or 'ndkVersion' in line:
-                  print(f"  AFTER:  {line.strip()}")
-
-          if 'flutter.minSdkVersion' in content:
-              print("ERROR: minSdk patch failed!")
-              sys.exit(1)
-
-          # ── AndroidManifest 패치 ───────────────────────────────
-          manifest = 'android/app/src/main/AndroidManifest.xml'
-          with open(manifest) as f:
-              m = f.read()
-
-          if 'INTERNET' not in m:
-              m = m.replace(
-                  '<application',
-                  '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
-                  1)
-              print('Added INTERNET permission')
-          else:
-              print('INTERNET permission already present')
-
-          if '<queries>' not in m:
-              queries = (
-                  '\n    <queries>\n'
-                  '        <intent>\n'
-                  '            <action android:name="android.intent.action.VIEW" />\n'
-                  '            <data android:scheme="https" />\n'
-                  '        </intent>\n'
-                  '    </queries>')
-              m = m.replace('</manifest>', queries + '\n</manifest>', 1)
-              print('Added url_launcher queries')
-          else:
-              print('queries already present')
-
-          with open(manifest, 'w') as f:
-              f.write(m)
-          EOF
-
+      # ── 의존성 설치 ───────────────────────────────────────────
       - name: Get dependencies
         run: flutter pub get
 
+      # ── APK 빌드 ─────────────────────────────────────────────
       - name: Build APK (release)
         run: flutter build apk --release --split-per-abi
 
       - name: Rename APKs
         run: |
           cd build/app/outputs/flutter-apk
-          mv app-arm64-v8a-release.apk  SoulPal-arm64.apk  || true
-          mv app-armeabi-v7a-release.apk SoulPal-arm32.apk || true
-          mv app-x86_64-release.apk     SoulPal-x86_64.apk || true
+          mv app-arm64-v8a-release.apk   SoulPal-arm64.apk  || true
+          mv app-armeabi-v7a-release.apk SoulPal-arm32.apk  || true
+          mv app-x86_64-release.apk      SoulPal-x86_64.apk || true
 
+      # ── GitHub Release 생성 ───────────────────────────────────
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -180,7 +185,7 @@ jobs:
             | `SoulPal-arm64.apk` | 대부분의 최신 안드로이드 폰 **(권장)** |
             | `SoulPal-arm32.apk` | 구형 안드로이드 폰 |
 
-            > **기존 앱 위에 덮어쓰기 설치 시 AI 모델을 다시 다운로드하지 않습니다.**
+            > **기존 앱 위에 덮어쓰기 설치 시 AI 모델을 다시 받지 않습니다.**
             > **첫 설치 시에만 AI 모델 (~800MB) 다운로드가 필요합니다.**
           files: |
             build/app/outputs/flutter-apk/SoulPal-arm64.apk
