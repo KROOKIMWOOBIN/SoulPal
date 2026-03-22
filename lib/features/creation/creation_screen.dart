@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../app.dart';
 import '../../core/constants/categories.dart';
 import '../../models/character.dart';
 import '../../providers/character_provider.dart';
@@ -81,8 +82,8 @@ class _CreationScreenState extends State<CreationScreen> {
           StepIndicator(currentStep: _step, totalSteps: _totalSteps),
           const SizedBox(height: 20),
           Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+            child: KeyedSubtree(
+              key: ValueKey(_step),
               child: _buildStep(settings),
             ),
           ),
@@ -235,6 +236,13 @@ class _CreationScreenState extends State<CreationScreen> {
   }
 
   void _createCharacter(BuildContext context) {
+    if (_relationshipId == null ||
+        _personalityId == null ||
+        _speechStyleId == null ||
+        _appearanceId == null) {
+      showGlobalError('캐릭터 생성 오류: 선택되지 않은 항목이 있습니다.');
+      return;
+    }
     final character = Character(
       id: _uuid.v4(),
       name: _nameController.text.trim(),
@@ -357,7 +365,7 @@ class _CategoryStep extends StatelessWidget {
 }
 
 // ─── Name step widget ────────────────────────────────────────────────────────
-class _NameStep extends StatefulWidget {
+class _NameStep extends StatelessWidget {
   final TextEditingController controller;
   final String suggestedName;
   final SettingsProvider settings;
@@ -372,32 +380,19 @@ class _NameStep extends StatefulWidget {
   });
 
   @override
-  State<_NameStep> createState() => _NameStepState();
-}
-
-class _NameStepState extends State<_NameStep> {
-  @override
-  void initState() {
-    super.initState();
-    if (widget.controller.text.isEmpty) {
-      widget.controller.text = widget.suggestedName;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           Text(
-            widget.settings.t('이름을 정해볼까요?', 'Name your friend!'),
+            settings.t('이름을 정해볼까요?', 'Name your friend!'),
             style: Theme.of(context).textTheme.headlineMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            widget.settings.t(
+            settings.t(
               '친구의 이름을 입력하거나 추천 이름을 사용하세요',
               'Enter a name or use the suggested one',
             ),
@@ -406,19 +401,19 @@ class _NameStepState extends State<_NameStep> {
           ),
           const SizedBox(height: 32),
           TextField(
-            controller: widget.controller,
-            onChanged: (_) => widget.onNameChanged(),
+            controller: controller,
+            onChanged: (_) => onNameChanged(),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             decoration: InputDecoration(
-              hintText: widget.settings.t('이름 입력...', 'Enter name...'),
+              hintText: settings.t('이름 입력...', 'Enter name...'),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            widget.settings.t(
-              '💡 추천: ${widget.suggestedName}',
-              '💡 Suggested: ${widget.suggestedName}',
+            settings.t(
+              '💡 추천: $suggestedName',
+              '💡 Suggested: $suggestedName',
             ),
             style: const TextStyle(
               color: Color(0xFF7C5CBF),
@@ -427,11 +422,10 @@ class _NameStepState extends State<_NameStep> {
           ),
           TextButton(
             onPressed: () {
-              widget.controller.text = widget.suggestedName;
-              widget.onNameChanged();
+              controller.text = suggestedName;
+              onNameChanged();
             },
-            child:
-                Text(widget.settings.t('추천 이름 사용', 'Use suggested')),
+            child: Text(settings.t('추천 이름 사용', 'Use suggested')),
           ),
         ],
       ),
