@@ -26,7 +26,7 @@ class CharacterCard extends StatelessWidget {
 
     return Semantics(
       label: '${character.name}, ${relationship.label(locale)}',
-      hint: '탭하면 대화 시작, 길게 누르면 메뉴',
+      hint: locale == 'ko' ? '탭하면 대화 시작, 길게 누르면 메뉴' : 'Tap to chat, long press for menu',
       button: true,
       child: GestureDetector(
         onTap: onTap,

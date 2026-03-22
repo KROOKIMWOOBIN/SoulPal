@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -11,6 +12,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final chat = context.watch<ChatProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -197,7 +199,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _Card(
-            color: const Color(0xFFFFF8E7),
+            color: isDark ? const Color(0xFF2A2510) : const Color(0xFFFFF8E7),
             child: Row(
               children: [
                 const Text('⚠️', style: TextStyle(fontSize: 16)),
@@ -208,8 +210,11 @@ class SettingsScreen extends StatelessWidget {
                       'AI 파라미터 변경은 다음 앱 재시작 시 적용됩니다.',
                       'AI parameter changes apply on next app restart.',
                     ),
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF7B6F8A)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? const Color(0xFFAA9EC4)
+                            : const Color(0xFF7B6F8A)),
                   ),
                 ),
               ],
@@ -269,7 +274,7 @@ class SettingsScreen extends StatelessWidget {
 
           // ── 안내 ───────────────────────────────────────────────
           _Card(
-            color: const Color(0xFFF5F0FF),
+            color: isDark ? const Color(0xFF1E1A2E) : const Color(0xFFF5F0FF),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -322,9 +327,17 @@ class SettingsScreen extends StatelessWidget {
                       fontSize: 12, color: Color(0xFF7B6F8A)),
                 ),
                 const SizedBox(height: 4),
-                const Text('v1.1.0',
-                    style: TextStyle(
-                        fontSize: 12, color: Color(0xFFB0A8C8))),
+                FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (ctx, snap) {
+                    final version = snap.hasData
+                        ? 'v${snap.data!.version}+${snap.data!.buildNumber}'
+                        : 'v—';
+                    return Text(version,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFFB0A8C8)));
+                  },
+                ),
               ],
             ),
           ),
@@ -519,6 +532,7 @@ class _Tip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Row(
@@ -529,8 +543,9 @@ class _Tip extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                  fontSize: 13, color: Color(0xFF2D2040)),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? const Color(0xFFEDE8FF) : const Color(0xFF2D2040)),
             ),
           ),
         ],

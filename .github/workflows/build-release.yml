@@ -100,23 +100,41 @@ jobs:
               sys.exit(1)
           EOF
 
-      - name: Add INTERNET permission to AndroidManifest
+      - name: Add INTERNET permission and url_launcher queries to AndroidManifest
         run: |
           python3 - << 'EOF'
           path = 'android/app/src/main/AndroidManifest.xml'
           with open(path) as f:
               content = f.read()
+
+          # INTERNET permission
           if 'INTERNET' not in content:
               content = content.replace(
                   '<application',
                   '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
                   1
               )
-              with open(path, 'w') as f:
-                  f.write(content)
               print('Added INTERNET permission')
           else:
               print('INTERNET permission already present')
+
+          # url_launcher queries (Android 11+)
+          if '<queries>' not in content:
+              queries = (
+                  '\n    <queries>\n'
+                  '        <intent>\n'
+                  '            <action android:name="android.intent.action.VIEW" />\n'
+                  '            <data android:scheme="https" />\n'
+                  '        </intent>\n'
+                  '    </queries>'
+              )
+              content = content.replace('</manifest>', queries + '\n</manifest>', 1)
+              print('Added url_launcher queries')
+          else:
+              print('queries already present')
+
+          with open(path, 'w') as f:
+              f.write(content)
           EOF
 
       - name: Get dependencies

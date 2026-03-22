@@ -17,6 +17,11 @@ class CategoryOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final unselectedBg = isDark ? const Color(0xFF2E2544) : Colors.white;
+    final unselectedBorder = isDark ? const Color(0xFF3D3257) : const Color(0xFFE8E0F0);
+    final unselectedText = isDark ? const Color(0xFFEDE8FF) : const Color(0xFF2D2040);
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -24,10 +29,10 @@ class CategoryOptionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? item.color.withOpacity(0.2)
-              : Colors.white,
+              : unselectedBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? item.color : const Color(0xFFE8E0F0),
+            color: selected ? item.color : unselectedBorder,
             width: selected ? 2.5 : 1.5,
           ),
           boxShadow: selected
@@ -51,7 +56,7 @@ class CategoryOptionCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? item.color : const Color(0xFF2D2040),
+                color: selected ? item.color : unselectedText,
               ),
             ),
           ],

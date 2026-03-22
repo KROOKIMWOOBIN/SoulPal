@@ -432,6 +432,7 @@ class _WelcomeMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -460,7 +461,7 @@ class _WelcomeMessage extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${character.relationship.labelKo} • ${character.personality.labelKo}',
+            '${character.relationship.label(settings.locale)} • ${character.personality.label(settings.locale)}',
             style: const TextStyle(
               fontSize: 13,
               color: Color(0xFF7B6F8A),
@@ -468,7 +469,7 @@ class _WelcomeMessage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            '첫 인사를 건네보세요! 👋',
+            settings.t('첫 인사를 건네보세요! 👋', 'Say hello! 👋'),
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade500,
@@ -488,9 +489,10 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: const Color(0xFFFFF3F3),
+      color: isDark ? const Color(0xFF3D1515) : const Color(0xFFFFF3F3),
       child: Row(
         children: [
           const Icon(Icons.error_outline, color: Colors.red, size: 18),
@@ -498,13 +500,17 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(fontSize: 13, color: Colors.red),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFFFF8080) : Colors.red,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+            icon: Icon(Icons.close, size: 18,
+                color: isDark ? const Color(0xFFFF8080) : Colors.red),
             padding: EdgeInsets.zero,
             onPressed: onDismiss,
           ),

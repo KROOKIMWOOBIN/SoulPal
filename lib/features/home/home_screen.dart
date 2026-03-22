@@ -4,16 +4,39 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/character.dart';
 import '../../providers/character_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/update_service.dart';
 import '../chat/chat_screen.dart';
 import '../creation/creation_screen.dart';
 import '../settings/settings_screen.dart';
 import 'widgets/character_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  UpdateInfo? _updateInfo;
+  bool _updateDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUpdate();
+  }
+
+  Future<void> _checkUpdate() async {
+    final info = await UpdateService.checkForUpdate();
+    if (mounted && info != null) {
+      setState(() => _updateInfo = info);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +104,22 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: characters.isEmpty
-          ? _EmptyState(settings: settings)
-          : _CharacterList(characters: characters, settings: settings),
+      body: Column(
+        children: [
+          // 업데이트 배너
+          if (_updateInfo != null && !_updateDismissed)
+            _UpdateBanner(
+              info: _updateInfo!,
+              settings: settings,
+              onDismiss: () => setState(() => _updateDismissed = true),
+            ),
+          Expanded(
+            child: characters.isEmpty
+                ? _EmptyState(settings: settings)
+                : _CharacterList(characters: characters, settings: settings),
+          ),
+        ],
+      ),
       floatingActionButton: Semantics(
         label: settings.t('새 친구 만들기', 'Create new friend'),
         child: FloatingActionButton.extended(
@@ -133,6 +169,74 @@ class HomeScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreationScreen()),
+    );
+  }
+}
+
+// ─── 업데이트 배너 ────────────────────────────────────────────────────────────
+class _UpdateBanner extends StatelessWidget {
+  final UpdateInfo info;
+  final SettingsProvider settings;
+  final VoidCallback onDismiss;
+
+  const _UpdateBanner({
+    required this.info,
+    required this.settings,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF7C5CBF), Color(0xFF9B7ED4)],
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.system_update_rounded,
+              color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              settings.t(
+                '새 버전 v${info.latestVersion} 출시!',
+                'New version v${info.latestVersion} available!',
+              ),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              final uri = Uri.parse(info.releaseUrl);
+              try {
+                await launchUrl(uri,
+                    mode: LaunchMode.externalApplication);
+              } catch (_) {}
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              backgroundColor: Colors.white24,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(settings.t('업데이트', 'Update'),
+                style: const TextStyle(fontSize: 12)),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onDismiss,
+            child: const Icon(Icons.close, color: Colors.white70, size: 18),
+          ),
+        ],
+      ),
     );
   }
 }

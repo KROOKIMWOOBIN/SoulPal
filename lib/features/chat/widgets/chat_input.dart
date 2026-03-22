@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/settings_provider.dart';
 
 class ChatInput extends StatefulWidget {
   final bool enabled;
@@ -47,6 +49,13 @@ class _ChatInputState extends State<ChatInput> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF241D35) : Colors.white;
     final inputBg = isDark ? const Color(0xFF2E2544) : const Color(0xFFF5F0FF);
+    final s = context.watch<SettingsProvider>();
+    final hintText = widget.enabled
+        ? s.t('메시지를 입력하세요...', 'Type a message...')
+        : s.t('답변을 기다리는 중...', 'Waiting for reply...');
+    final semanticsLabel = widget.enabled
+        ? s.t('메시지를 입력하세요', 'Type a message')
+        : s.t('답변을 기다리는 중', 'Waiting for reply');
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -69,9 +78,7 @@ class _ChatInputState extends State<ChatInput> {
               children: [
                 Expanded(
                   child: Semantics(
-                    label: widget.enabled
-                        ? '메시지를 입력하세요'
-                        : '답변을 기다리는 중',
+                    label: semanticsLabel,
                     child: TextField(
                       controller: _controller,
                       enabled: widget.enabled,
@@ -80,9 +87,7 @@ class _ChatInputState extends State<ChatInput> {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
                       decoration: InputDecoration(
-                        hintText: widget.enabled
-                            ? '메시지를 입력하세요...'
-                            : '답변을 기다리는 중...',
+                        hintText: hintText,
                         hintStyle: TextStyle(
                           fontSize: 14,
                           color: isDark
@@ -114,7 +119,7 @@ class _ChatInputState extends State<ChatInput> {
                 // 재생성 버튼
                 if (widget.onRegenerate != null && !_hasText)
                   Semantics(
-                    label: '마지막 AI 응답 재생성',
+                    label: s.t('마지막 AI 응답 재생성', 'Regenerate last AI response'),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       child: Material(
@@ -140,7 +145,7 @@ class _ChatInputState extends State<ChatInput> {
                   ),
                 // 전송 버튼
                 Semantics(
-                  label: '메시지 전송',
+                  label: s.t('메시지 전송', 'Send message'),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     child: Material(

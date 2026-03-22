@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../../models/character.dart';
 import '../../../models/message.dart';
+import '../../../providers/settings_provider.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -26,8 +28,9 @@ class MessageBubble extends StatelessWidget {
     final textColor =
         isUser ? Colors.white : (isDark ? const Color(0xFFEDE8FF) : const Color(0xFF2D2040));
 
+    final settings = context.watch<SettingsProvider>();
     return Semantics(
-      label: '${isUser ? "나" : character.name}: ${message.content}',
+      label: '${isUser ? settings.t("나", "Me") : character.name}: ${message.content}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(
