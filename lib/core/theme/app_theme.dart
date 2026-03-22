@@ -114,6 +114,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(24),
           borderSide: const BorderSide(color: divider),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: divider),
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: const BorderSide(color: primary, width: 2),
@@ -214,6 +218,10 @@ class AppTheme {
           borderSide: const BorderSide(color: darkDivider),
         ),
         enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: darkDivider),
+        ),
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: const BorderSide(color: darkDivider),
         ),

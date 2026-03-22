@@ -64,7 +64,14 @@ class ChatProvider extends ChangeNotifier {
 
   // ─── 채팅 로드 (페이지네이션) ────────────────────────────────
   void loadChat(String characterId) {
-    if (_currentCharacterId == characterId) return;
+    if (_currentCharacterId == characterId) {
+      // 같은 캐릭터 재진입 시에도 검색 상태는 초기화
+      if (_searchQuery.isNotEmpty) {
+        _searchQuery = '';
+        notifyListeners();
+      }
+      return;
+    }
     _currentCharacterId = characterId;
     _searchQuery = '';
     final all = _storage.loadMessages(characterId);
