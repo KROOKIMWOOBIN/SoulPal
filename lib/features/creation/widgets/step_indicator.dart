@@ -12,6 +12,7 @@ class StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(totalSteps, (i) {
@@ -25,7 +26,7 @@ class StepIndicator extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDone || isActive
                 ? const Color(0xFF7C5CBF)
-                : const Color(0xFFE0D8F0),
+                : (isDark ? const Color(0xFF4A4060) : const Color(0xFFE0D8F0)),
             borderRadius: BorderRadius.circular(5),
           ),
         );

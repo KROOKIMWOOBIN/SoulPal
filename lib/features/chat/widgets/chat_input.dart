@@ -125,7 +125,7 @@ class _ChatInputState extends State<ChatInput> {
                       child: Material(
                         color: widget.enabled
                             ? const Color(0xFF7C5CBF).withOpacity(0.15)
-                            : const Color(0xFFE0D8F0),
+                            : (isDark ? const Color(0xFF3D3560) : const Color(0xFFE0D8F0)),
                         shape: const CircleBorder(),
                         child: InkWell(
                           onTap:
@@ -151,7 +151,7 @@ class _ChatInputState extends State<ChatInput> {
                     child: Material(
                       color: _hasText && widget.enabled
                           ? const Color(0xFF7C5CBF)
-                          : const Color(0xFFE0D8F0),
+                          : (isDark ? const Color(0xFF3D3560) : const Color(0xFFE0D8F0)),
                       shape: const CircleBorder(),
                       child: InkWell(
                         onTap: _hasText && widget.enabled ? _send : null,

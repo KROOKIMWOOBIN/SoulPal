@@ -405,6 +405,7 @@ class _ParamRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -433,7 +434,9 @@ class _ParamRow extends StatelessWidget {
           ],
         ),
         Text(hint,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF7B6F8A))),
+            style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFFAA9EC4) : const Color(0xFF7B6F8A))),
       ],
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
+
 import '../../providers/chat_provider.dart';
 import '../../services/model_manager.dart';
 import '../home/home_screen.dart';
@@ -195,6 +196,7 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.read<SettingsProvider>();
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -213,9 +215,9 @@ class _Logo extends StatelessWidget {
             ),
           ).animate().fadeIn(delay: 300.ms),
           const SizedBox(height: 8),
-          const Text(
-            '나만의 가상 친구',
-            style: TextStyle(fontSize: 16, color: Colors.white70),
+          Text(
+            settings.t('나만의 가상 친구', 'Your virtual friend'),
+            style: const TextStyle(fontSize: 16, color: Colors.white70),
           ).animate().fadeIn(delay: 500.ms),
         ],
       ),
