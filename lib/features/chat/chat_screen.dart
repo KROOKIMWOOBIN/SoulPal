@@ -24,6 +24,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _searchController = TextEditingController();
   bool _showSearch = false;
   String? _initError;
+  ChatProvider? _chatProvider;
 
   @override
   void initState() {
@@ -31,13 +32,24 @@ class _ChatScreenState extends State<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
-        final chat = context.read<ChatProvider>();
-        chat.loadChat(widget.character.id);
+        _chatProvider = context.read<ChatProvider>();
+        _chatProvider!.loadChat(widget.character.id);
+        _chatProvider!.addListener(_onChatUpdate);
       } catch (e) {
         if (mounted) setState(() => _initError = e.toString());
       }
     });
     _scrollController.addListener(_onScroll);
+  }
+
+  void _onChatUpdate() {
+    if (!mounted) return;
+    // 메시지 목록이 있고 로딩이 끝난 직후(응답 수신) 스크롤
+    if (_chatProvider != null &&
+        !_chatProvider!.isLoading &&
+        _chatProvider!.messages.isNotEmpty) {
+      _scrollToBottom();
+    }
   }
 
   void _onScroll() {
@@ -53,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _chatProvider?.removeListener(_onChatUpdate);
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -128,6 +141,7 @@ class _ChatScreenState extends State<ChatScreen> {
               enabled: !chat.isLoading,
               onSend: (text) {
                 final s = context.read<SettingsProvider>();
+                final characterProvider = context.read<CharacterProvider>();
                 chat
                     .sendMessage(
                       widget.character,
@@ -140,10 +154,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       (m) => !m.isUser,
                       orElse: () => chat.allMessages.last,
                     );
-                    context
-                        .read<CharacterProvider>()
-                        .updateLastMessage(
-                            widget.character.id, lastAi.content);
+                    characterProvider.updateLastMessage(
+                        widget.character.id, lastAi.content);
                   }
                 });
                 _scrollToBottom();
@@ -377,9 +389,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       return _WelcomeMessage(character: widget.character);
     }
-
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _scrollToBottom());
 
     return ListView.builder(
       controller: _scrollController,
