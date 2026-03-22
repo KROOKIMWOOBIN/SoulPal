@@ -25,21 +25,26 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _showSearch = false;
   String? _initError;
   ChatProvider? _chatProvider;
+  bool _chatInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      try {
-        _chatProvider = context.read<ChatProvider>();
-        _chatProvider!.loadChat(widget.character.id);
-        _chatProvider!.addListener(_onChatUpdate);
-      } catch (e) {
-        if (mounted) setState(() => _initError = e.toString());
-      }
-    });
     _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_chatInitialized) return;
+    _chatInitialized = true;
+    try {
+      _chatProvider = context.read<ChatProvider>();
+      _chatProvider!.addListener(_onChatUpdate);
+      _chatProvider!.loadChat(widget.character.id);
+    } catch (e) {
+      _initError = e.toString();
+    }
   }
 
   void _onChatUpdate() {
@@ -205,15 +210,12 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                setState(() => _initError = null);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  try {
-                    context.read<ChatProvider>().loadChat(widget.character.id);
-                  } catch (e) {
-                    if (mounted) setState(() => _initError = e.toString());
-                  }
-                });
+                try {
+                  context.read<ChatProvider>().loadChat(widget.character.id);
+                  setState(() => _initError = null);
+                } catch (e) {
+                  setState(() => _initError = e.toString());
+                }
               },
               icon: const Icon(Icons.refresh_rounded),
               label: Text(settings.t('다시 시도', 'Retry')),
