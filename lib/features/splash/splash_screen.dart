@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -201,9 +200,7 @@ class _Logo extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('✨', style: TextStyle(fontSize: 72))
-              .animate()
-              .scale(duration: 700.ms, curve: Curves.elasticOut),
+          const Text('✨', style: TextStyle(fontSize: 72)),
           const SizedBox(height: 16),
           const Text(
             'SoulPal',
@@ -213,12 +210,12 @@ class _Logo extends StatelessWidget {
               color: Colors.white,
               letterSpacing: 1,
             ),
-          ).animate().fadeIn(delay: 300.ms),
+          ),
           const SizedBox(height: 8),
           Text(
             settings.t('나만의 가상 친구', 'Your virtual friend'),
             style: const TextStyle(fontSize: 16, color: Colors.white70),
-          ).animate().fadeIn(delay: 500.ms),
+          ),
         ],
       ),
     );
@@ -276,8 +273,6 @@ class _DownloadView extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           )
-              .animate(onPlay: (c) => c.repeat())
-              .shimmer(color: Colors.white38, duration: 1800.ms)
         else
           const SizedBox(
             width: 22,

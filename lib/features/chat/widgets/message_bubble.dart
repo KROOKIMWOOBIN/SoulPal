@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../models/character.dart';
 import '../../../models/message.dart';
@@ -86,7 +85,7 @@ class MessageBubble extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.1, end: 0);
+    );
   }
 }
 
@@ -157,10 +156,62 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class TypingIndicator extends StatelessWidget {
+class TypingIndicator extends StatefulWidget {
   final Character character;
 
   const TypingIndicator({super.key, required this.character});
+
+  @override
+  State<TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<TypingIndicator>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(
+      3,
+      (i) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 400),
+      ),
+    );
+    _animations = _controllers.map((c) {
+      return Tween<double>(begin: 0, end: -6).animate(
+        CurvedAnimation(parent: c, curve: Curves.easeInOut),
+      );
+    }).toList();
+
+    _startSequence();
+  }
+
+  Future<void> _startSequence() async {
+    while (mounted) {
+      for (int i = 0; i < _controllers.length; i++) {
+        if (!mounted) return;
+        _controllers[i].forward();
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      await Future.delayed(const Duration(milliseconds: 250));
+      for (final c in _controllers) {
+        if (!mounted) return;
+        c.reverse();
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +220,7 @@ class TypingIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
         children: [
-          _Avatar(character: character),
+          _Avatar(character: widget.character),
           const SizedBox(width: 8),
           Container(
             padding:
@@ -192,32 +243,27 @@ class TypingIndicator extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: List.generate(
-                3,
-                (i) => Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C5CBF).withOpacity(0.6),
-                    shape: BoxShape.circle,
+              children: List.generate(3, (i) {
+                return AnimatedBuilder(
+                  animation: _animations[i],
+                  builder: (_, __) => Transform.translate(
+                    offset: Offset(0, _animations[i].value),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C5CBF).withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
-                )
-                    .animate(onPlay: (c) => c.repeat())
-                    .moveY(
-                      begin: 0,
-                      end: -6,
-                      delay: (i * 150).ms,
-                      duration: 400.ms,
-                      curve: Curves.easeInOut,
-                    )
-                    .then()
-                    .moveY(begin: -6, end: 0, duration: 400.ms),
-              ),
+                );
+              }),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 200.ms);
+    );
   }
 }

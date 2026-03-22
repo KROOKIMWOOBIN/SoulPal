@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -488,16 +487,14 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🌟', style: TextStyle(fontSize: 72))
-              .animate()
-              .scale(duration: 600.ms, curve: Curves.elasticOut),
+          const Text('🌟', style: TextStyle(fontSize: 72)),
           const SizedBox(height: 20),
           Text(
             settings.t('첫 번째 친구를 만들어보세요!', 'Create your first friend!'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: const Color(0xFF7C5CBF),
                 ),
-          ).animate().fadeIn(delay: 200.ms),
+          ),
           const SizedBox(height: 8),
           Text(
             settings.t(
@@ -506,7 +503,7 @@ class _EmptyState extends StatelessWidget {
             ),
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 300.ms),
+          ),
         ],
       ),
     );

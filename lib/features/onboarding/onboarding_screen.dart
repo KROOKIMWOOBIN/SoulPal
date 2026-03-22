@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
 import '../home/home_screen.dart';
@@ -204,9 +203,7 @@ class _OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 88))
-              .animate()
-              .scale(duration: 500.ms, curve: Curves.elasticOut),
+          Text(emoji, style: const TextStyle(fontSize: 88)),
           const SizedBox(height: 32),
           Text(
             title,
@@ -217,7 +214,7 @@ class _OnboardingPage extends StatelessWidget {
               height: 1.3,
             ),
             textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+          ),
           const SizedBox(height: 16),
           Text(
             desc,
@@ -227,7 +224,7 @@ class _OnboardingPage extends StatelessWidget {
               height: 1.7,
             ),
             textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 350.ms),
+          ),
         ],
       ),
     );

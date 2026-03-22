@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../../models/character.dart';
 
 class CharacterCard extends StatelessWidget {
@@ -149,7 +148,7 @@ class CharacterCard extends StatelessWidget {
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05, end: 0);
+    );
   }
 }
 
