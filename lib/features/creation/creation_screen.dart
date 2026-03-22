@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/categories.dart';
@@ -83,17 +82,7 @@ class _CreationScreenState extends State<CreationScreen> {
           const SizedBox(height: 20),
           Expanded(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.05, 0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              ),
+              duration: const Duration(milliseconds: 250),
               child: _buildStep(settings),
             ),
           ),
@@ -342,7 +331,7 @@ class _CategoryStep extends StatelessWidget {
                   textAlign: TextAlign.center),
             ],
           ),
-        ).animate().fadeIn(duration: 300.ms),
+        ),
         const SizedBox(height: 20),
         Expanded(
           child: GridView.builder(
@@ -359,8 +348,7 @@ class _CategoryStep extends StatelessWidget {
               selected: selected.contains(items[i].id),
               locale: locale,
               onTap: () => onToggle(items[i].id),
-            ).animate(delay: (i * 50).ms).fadeIn().scale(
-                begin: const Offset(0.9, 0.9)),
+            ),
           ),
         ),
       ],
@@ -447,6 +435,6 @@ class _NameStepState extends State<_NameStep> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms);
+    );
   }
 }
