@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../app.dart';
 import '../models/character.dart';
 import '../models/message.dart';
 import '../services/local_llm_service.dart';
@@ -87,12 +88,16 @@ class ChatProvider extends ChangeNotifier {
 
   void loadMoreMessages() {
     if (!_hasMore || _currentCharacterId == null) return;
-    final all = _storage.loadMessages(_currentCharacterId!);
-    final newCount = (_loadedCount + _pageSize).clamp(0, all.length);
-    _hasMore = newCount < all.length;
-    _loadedCount = newCount;
-    _messages = all.sublist(all.length - _loadedCount);
-    notifyListeners();
+    try {
+      final all = _storage.loadMessages(_currentCharacterId!);
+      final newCount = (_loadedCount + _pageSize).clamp(0, all.length);
+      _hasMore = newCount < all.length;
+      _loadedCount = newCount;
+      _messages = all.sublist(all.length - _loadedCount);
+      notifyListeners();
+    } catch (e) {
+      showGlobalError('이전 메시지 불러오기 실패: $e');
+    }
   }
 
   // ─── 검색 ────────────────────────────────────────────────────
@@ -154,6 +159,7 @@ class ChatProvider extends ChangeNotifier {
       if (_currentCharacterId != character.id) return;
       _status = ChatStatus.error;
       _errorMessage = e.toString();
+      showGlobalError('AI 응답 오류: $e');
     }
 
     notifyListeners();
@@ -207,6 +213,7 @@ class ChatProvider extends ChangeNotifier {
       if (_currentCharacterId != character.id) return;
       _status = ChatStatus.error;
       _errorMessage = e.toString();
+      showGlobalError('AI 응답 재생성 오류: $e');
     }
 
     notifyListeners();

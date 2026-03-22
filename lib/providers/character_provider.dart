@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app.dart';
 import '../models/character.dart';
 import '../services/storage_service.dart';
 
@@ -9,13 +10,20 @@ class CharacterProvider extends ChangeNotifier {
   final StorageService _storage;
   List<Character> _characters = [];
   CharacterSortOrder _sortOrder = CharacterSortOrder.recent;
+  String? _lastError;
 
   CharacterProvider(SharedPreferences prefs)
       : _storage = StorageService(prefs) {
-    _characters = _storage.loadCharacters();
+    try {
+      _characters = _storage.loadCharacters();
+    } catch (e) {
+      _lastError = e.toString();
+      showGlobalError('캐릭터 목록 로드 실패: $e');
+    }
   }
 
   CharacterSortOrder get sortOrder => _sortOrder;
+  String? get lastError => _lastError;
 
   List<Character> get characters {
     final list = List<Character>.from(_characters);
@@ -55,16 +63,24 @@ class CharacterProvider extends ChangeNotifier {
 
   Future<void> addCharacter(Character character) async {
     _characters.add(character);
-    await _storage.saveCharacters(_characters);
     notifyListeners();
+    try {
+      await _storage.saveCharacters(_characters);
+    } catch (e) {
+      showGlobalError('캐릭터 저장 실패: $e');
+    }
   }
 
   Future<void> updateCharacter(Character updated) async {
     final idx = _characters.indexWhere((c) => c.id == updated.id);
     if (idx == -1) return;
     _characters[idx] = updated;
-    await _storage.saveCharacters(_characters);
     notifyListeners();
+    try {
+      await _storage.saveCharacters(_characters);
+    } catch (e) {
+      showGlobalError('캐릭터 업데이트 실패: $e');
+    }
   }
 
   Future<void> toggleFavorite(String characterId) async {
@@ -72,8 +88,12 @@ class CharacterProvider extends ChangeNotifier {
     if (idx == -1) return;
     _characters[idx] =
         _characters[idx].copyWith(isFavorite: !_characters[idx].isFavorite);
-    await _storage.saveCharacters(_characters);
     notifyListeners();
+    try {
+      await _storage.saveCharacters(_characters);
+    } catch (e) {
+      showGlobalError('즐겨찾기 저장 실패: $e');
+    }
   }
 
   Future<void> updateLastMessage(
@@ -84,13 +104,22 @@ class CharacterProvider extends ChangeNotifier {
       lastMessage: message,
       lastMessageAt: DateTime.now(),
     );
-    await _storage.saveCharacters(_characters);
     notifyListeners();
+    try {
+      await _storage.saveCharacters(_characters);
+    } catch (e) {
+      // 마지막 메시지 저장 실패는 조용히 처리 (UX 방해 최소화)
+      debugPrint('[CharacterProvider] updateLastMessage 저장 실패: $e');
+    }
   }
 
   Future<void> deleteCharacter(String characterId) async {
     _characters.removeWhere((c) => c.id == characterId);
-    await _storage.deleteCharacter(characterId);
     notifyListeners();
+    try {
+      await _storage.deleteCharacter(characterId);
+    } catch (e) {
+      showGlobalError('캐릭터 삭제 실패: $e');
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,8 +12,7 @@ import 'providers/settings_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Release 모드에서 build() 예외 시 SizedBox.shrink()(회색 빈 화면) 대신
-  // 명시적 에러 카드를 표시해 원인 파악이 가능하도록 함
+  // ── 1. Build 예외 → 회색 빈 화면 대신 에러 카드 표시 ──────────────
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Material(
       color: Colors.transparent,
@@ -26,7 +27,7 @@ void main() async {
                 color: Colors.redAccent, size: 48),
             const SizedBox(height: 12),
             const Text(
-              '화면을 불러오지 못했습니다',
+              '[Beta] 화면을 불러오지 못했습니다',
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -35,16 +36,31 @@ void main() async {
             const SizedBox(height: 8),
             Text(
               details.exception.toString(),
-              style:
-                  const TextStyle(color: Colors.white54, fontSize: 11),
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
               textAlign: TextAlign.center,
-              maxLines: 5,
+              maxLines: 6,
               overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
+  };
+
+  // ── 2. Flutter 프레임워크 에러 (렌더링·레이아웃 등) ────────────────
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // SnackBar는 앱이 완전히 뜬 이후에만 동작 — 조용히 누락되어도 괜찮음
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showGlobalError(details.exception.toString());
+    });
+  };
+
+  // ── 3. Dart async / isolate 에러 ─────────────────────────────────
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('[PlatformDispatcher] $error\n$stack');
+    showGlobalError(error.toString());
+    return true; // handled
   };
 
   await SystemChrome.setPreferredOrientations([
