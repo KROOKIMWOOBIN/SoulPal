@@ -137,6 +137,9 @@ class ChatProvider extends ChangeNotifier {
         historyCount: historyCount,
       );
 
+      // 응답 대기 중 다른 캐릭터로 이동한 경우 결과 폐기
+      if (_currentCharacterId != character.id) return;
+
       _messages.add(Message(
         id: _uuid.v4(),
         characterId: character.id,
@@ -148,6 +151,7 @@ class ChatProvider extends ChangeNotifier {
       _status = ChatStatus.idle;
       await _storage.saveMessages(character.id, _messages);
     } catch (e) {
+      if (_currentCharacterId != character.id) return;
       _status = ChatStatus.error;
       _errorMessage = e.toString();
     }
@@ -187,6 +191,8 @@ class ChatProvider extends ChangeNotifier {
         historyCount: historyCount,
       );
 
+      if (_currentCharacterId != character.id) return;
+
       _messages.add(Message(
         id: _uuid.v4(),
         characterId: character.id,
@@ -198,6 +204,7 @@ class ChatProvider extends ChangeNotifier {
       _status = ChatStatus.idle;
       await _storage.saveMessages(character.id, _messages);
     } catch (e) {
+      if (_currentCharacterId != character.id) return;
       _status = ChatStatus.error;
       _errorMessage = e.toString();
     }
