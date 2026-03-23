@@ -1,19 +1,12 @@
-# Flutter / Dart
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
-.pub-cache/
-.pub/
-*.iml
+# Gradle
+backend/build/
+backend/.gradle/
+backend/gradle/wrapper/gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.properties
 
-# Android (android/ 는 커밋됨 — 삭제하지 말 것)
-ios/
-linux/
-macos/
-windows/
-web/
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
 
 # IDE
 .idea/
@@ -25,7 +18,9 @@ web/
 .DS_Store
 Thumbs.db
 
-# AI 모델 파일 (너무 큼)
-*.gguf
-*.bin
-*.ggml
+# Env / Secrets
+.env
+*.env.local
+
+# Logs
+*.log

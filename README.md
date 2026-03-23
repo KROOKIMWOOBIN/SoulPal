@@ -1,77 +1,124 @@
-# ✨ SoulPal — 나만의 AI 친구
+# SoulPal Web
 
-> 완전 오프라인 AI 동반자 앱. 인터넷 없이도 작동하며 모든 대화가 내 기기에만 저장됩니다.
+AI 캐릭터와 대화하는 웹 애플리케이션.
 
----
+## 아키텍처
 
-## 📥 설치 (Android)
-
-### 최신 버전 다운로드
-
-| 기기 | 다운로드 |
-|------|----------|
-| 최신 안드로이드 폰 (권장) | [⬇️ SoulPal-arm64.apk](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest/download/SoulPal-arm64.apk) |
-| 구형 안드로이드 폰 | [⬇️ SoulPal-arm32.apk](https://github.com/KROOKIMWOOBIN/SoulPal/releases/latest/download/SoulPal-arm32.apk) |
-
-> 어떤 걸 받을지 모르겠다면 **arm64** 를 받으세요.
-
-### 설치 방법
-
-1. 위 링크에서 APK 다운로드
-2. 안드로이드 설정 → **보안** → **출처를 알 수 없는 앱 설치 허용**
-3. 다운로드한 파일 탭 → 설치
-
-> **첫 실행 시 AI 모델 약 800MB를 다운로드합니다.**
-> Wi-Fi 환경에서 실행을 권장해요.
-
----
-
-## ✨ 주요 기능
-
-- 🤖 **완전 오프라인 AI** — 인터넷 없이도 대화 가능 (llama.cpp 기반)
-- 🔒 **프라이버시 보호** — 모든 대화가 기기에만 저장, 서버 전송 없음
-- 🎨 **캐릭터 커스터마이징** — 관계·성격·말투·관심사·분위기 6단계 설정
-- 🌙 **다크 모드** 완벽 지원 (WCAG AA 색상 대비 기준)
-- 🔍 **대화 검색** — 이전 메시지 키워드 검색
-- ⭐ **즐겨찾기** — 자주 대화하는 친구 상단 고정
-- 💬 **AI 응답 재생성** — 마음에 안 들면 다시 생성
-- 📤 **대화 공유/복사** — 대화 내용 내보내기
-- 🌐 **한국어 / 영어** 지원
-
----
-
-## 📋 요구사항
-
-- Android 6.0 (API 23) 이상
-- 여유 저장공간 1.5GB 이상 (앱 + AI 모델)
-- RAM 3GB 이상 권장
-
----
-
-## 🛠️ 개발자용 빌드
-
-```bash
-git clone https://github.com/KROOKIMWOOBIN/SoulPal.git
-cd SoulPal
-bash setup.sh
-flutter run
+```
+┌──────────────────────────────────────────────────────┐
+│                    Docker Compose                     │
+│                                                      │
+│  ┌──────────┐   ┌────────────┐   ┌───────────────┐  │
+│  │ postgres │   │   ollama   │   │    backend    │  │
+│  │  :5432   │   │   :11434   │   │    :8080      │  │
+│  │          │   │            │   │ Spring Boot   │  │
+│  │ PostgreSQL│  │ LLM 서버   │   │ + Vue SPA     │  │
+│  └──────────┘   └────────────┘   └───────────────┘  │
+│                                                      │
+│  Volume: postgres_data  /  ollama_data               │
+└──────────────────────────────────────────────────────┘
 ```
 
-### CI/CD
+## 서비스 명세
 
-- GitHub Actions에서 `arm64` / `arm32` APK를 자동 빌드
-- 릴리즈 APK는 일관된 키스토어로 서명 (GitHub Secrets 기반)
-- 키스토어 최초 생성: Actions → **🔑 키스토어 생성** 워크플로우 수동 실행 후 Secrets 등록
+| 서비스 | 이미지 | 포트 | 설명 |
+|--------|--------|------|------|
+| `db` | `postgres:16-alpine` | 5432 | 메인 데이터베이스 |
+| `ollama` | `ollama/ollama:latest` | 11434 | LLM 추론 서버 |
+| `ollama-init` | `ollama/ollama:latest` | - | 최초 모델 pull (1회성) |
+| `backend` | 빌드 | 8080 | Spring Boot API + Vue SPA |
 
----
+## 환경 변수
 
-## 🐛 알려진 수정 이력
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `DB_URL` | `jdbc:postgresql://db:5432/soulpal` | DB 연결 URL |
+| `DB_USER` | `soulpal` | DB 사용자 |
+| `DB_PASSWORD` | `soulpal1234` | DB 비밀번호 |
+| `OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama 서버 주소 |
+| `OLLAMA_MODEL` | `llama3` | 사용할 LLM 모델 |
+| `JWT_SECRET` | (기본값) | JWT 서명 키 (**배포 시 반드시 변경**) |
 
-| 버전 | 수정 내용 |
-|------|-----------|
-| 최신 | 채팅 화면 첫 렌더링 회색 화면 근본 수정 (`didChangeDependencies` 이동) |
-| 최신 | 채팅 재진입 시 검색 상태 미초기화 버그 수정 |
-| 최신 | `Navigator.pop()` 이후 deactivated context 사용으로 인한 crash 수정 |
-| 최신 | `loadCharacters()` JSON 파싱 예외처리 누락으로 인한 앱 크래시 수정 |
-| 최신 | APK 업데이트 시 서명 불일치(`INSTALL_FAILED_UPDATE_INCOMPATIBLE`) 수정 |
-| 최신 | 다크 모드 색상 대비 부족 전반 수정 |
+## 실행 방법
+
+### Docker (권장)
+
+```bash
+cd web/
+
+# 전체 서비스 시작
+docker compose up -d
+
+# 로그 확인
+docker compose logs -f backend
+docker compose logs -f ollama
+
+# 종료
+docker compose down
+```
+
+브라우저에서 http://localhost:8080 접속
+
+> **최초 실행 시**: `ollama-init` 컨테이너가 자동으로 `llama3` 모델을 pull합니다 (~4.7GB).
+> 모델 데이터는 `ollama_data` 볼륨에 영구 저장되므로 재시작 시 재다운로드 없음.
+
+### 로컬 개발
+
+**백엔드** (IntelliJ 기준):
+```bash
+cd web/backend/
+./gradlew bootRun
+```
+- Java 21 toolchain 자동 설정
+- H2 인메모리 DB 사용 (기본값)
+- Ollama는 localhost:11434 사용
+
+**프론트엔드** (별도 dev 서버):
+```bash
+cd web/frontend/
+npm install
+npm run dev   # http://localhost:5173 (API → :8080 프록시)
+```
+
+## 기술 스택
+
+- **Backend**: Spring Boot 3.2, Java 21, Spring Security (JWT), JPA
+- **Database**: PostgreSQL 16 (Docker) / H2 (로컬 개발)
+- **AI**: Ollama (llama3 모델)
+- **Frontend**: Vue 3, Pinia, Vue Router, Vite
+- **빌드**: Gradle 8.7 (node-gradle 플러그인으로 Vue 빌드 통합)
+- **인프라**: Docker Compose
+
+## API 명세
+
+### 인증
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/auth/register` | 회원가입 |
+| POST | `/api/auth/login` | 로그인 |
+| GET | `/api/auth/me` | 내 정보 |
+
+### 프로젝트
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/projects` | 프로젝트 목록 |
+| POST | `/api/projects` | 프로젝트 생성 |
+| PUT | `/api/projects/:id` | 프로젝트 수정 |
+| DELETE | `/api/projects/:id` | 프로젝트 삭제 |
+
+### 캐릭터
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/characters?projectId=` | 캐릭터 목록 (프로젝트 필터) |
+| POST | `/api/characters` | 캐릭터 생성 |
+| PUT | `/api/characters/:id` | 캐릭터 수정 |
+| DELETE | `/api/characters/:id` | 캐릭터 삭제 |
+| POST | `/api/characters/:id/favorite` | 즐겨찾기 토글 |
+
+### 채팅
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/chat/messages/:characterId` | 메시지 목록 (페이징) |
+| POST | `/api/chat/stream` | SSE 스트리밍 채팅 |
+| POST | `/api/chat/send` | 일반 채팅 |
+| DELETE | `/api/chat/messages/:characterId` | 대화 전체 삭제 |

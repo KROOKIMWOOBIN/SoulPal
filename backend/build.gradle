@@ -1,0 +1,77 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.3'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.github.node-gradle.node' version '7.0.2'
+}
+
+group = 'com.soulpal'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// ─── Vue.js 프론트엔드 빌드 설정 ─────────────────────────────────────────────
+node {
+    version = '20.11.0'
+    download = true
+    nodeProjectDir = file("${project.projectDir}/../frontend")
+}
+
+tasks.register('npmInstallFrontend', NpmTask) {
+    workingDir = file("${project.projectDir}/../frontend")
+    args = ['install']
+}
+
+tasks.register('buildFrontend', NpmTask) {
+    dependsOn 'npmInstallFrontend'
+    workingDir = file("${project.projectDir}/../frontend")
+    args = ['run', 'build']
+    inputs.dir("${project.projectDir}/../frontend/src")
+    inputs.file("${project.projectDir}/../frontend/package.json")
+    inputs.file("${project.projectDir}/../frontend/vite.config.js")
+    outputs.dir("${project.projectDir}/../frontend/dist")
+}
+
+tasks.register('copyFrontendToBuild', Copy) {
+    dependsOn 'buildFrontend'
+    from "${project.projectDir}/../frontend/dist"
+    into "${project.buildDir}/resources/main/static"
+}
+
+processResources.dependsOn 'copyFrontendToBuild'
+// ─────────────────────────────────────────────────────────────────────────────
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

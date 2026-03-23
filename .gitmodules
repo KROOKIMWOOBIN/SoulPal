@@ -1,3 +1,0 @@
-[submodule "vendor/llama_cpp_dart"]
-	path = vendor/llama_cpp_dart
-	url = https://github.com/netdur/llama_cpp_dart

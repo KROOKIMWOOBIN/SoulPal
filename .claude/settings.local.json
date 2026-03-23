@@ -4,7 +4,8 @@
       "Bash(wc -l /d/coding/SoulPal/lib/**/*.dart)",
       "Bash(flutter pub:*)",
       "Bash(where flutter:*)",
-      "WebSearch"
+      "WebSearch",
+      "Skill(update-config)"
     ]
   }
 }
