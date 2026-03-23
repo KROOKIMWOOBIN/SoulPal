@@ -12,4 +12,7 @@ public class ChatRequest {
     private String message;
 
     private int historyCount = 10;
+
+    /** true: 강제 웹 검색 / false: 키워드 자동 판단 */
+    private boolean webSearch = false;
 }

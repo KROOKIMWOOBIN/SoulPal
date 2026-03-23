@@ -1,5 +1,6 @@
 package com.soulpal.config;
 
+import com.soulpal.service.TokenService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,6 +18,7 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenService tokenService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -24,13 +26,16 @@ public class JwtFilter extends OncePerRequestFilter {
         String header = req.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            if (jwtUtil.isValid(token)) {
+            if (jwtUtil.isValid(token) && !tokenService.isBlacklisted(token)) {
                 Claims claims = jwtUtil.parse(token);
-                String userId = claims.getSubject();
-                String username = claims.get("username", String.class);
-                var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
-                auth.setDetails(username);
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                // 리프레시 토큰은 API 접근 불가
+                if (!"refresh".equals(claims.get("type", String.class))) {
+                    String userId   = claims.getSubject();
+                    String username = claims.get("username", String.class);
+                    var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
+                    auth.setDetails(username);
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
         }
         chain.doFilter(req, res);

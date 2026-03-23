@@ -6,6 +6,7 @@ import com.soulpal.model.Message;
 import com.soulpal.service.CharacterService;
 import com.soulpal.service.MessageService;
 import com.soulpal.service.OllamaService;
+import com.soulpal.service.WebCrawlerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,6 +27,7 @@ public class ChatController {
     private final CharacterService characterService;
     private final MessageService messageService;
     private final OllamaService ollamaService;
+    private final WebCrawlerService webCrawlerService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     @GetMapping("/messages/{characterId}")
@@ -43,22 +45,24 @@ public class ChatController {
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChat(@Valid @RequestBody ChatRequest req) {
-        SseEmitter emitter = new SseEmitter(120_000L);
+        SseEmitter emitter = new SseEmitter(180_000L);
 
         executor.execute(() -> {
             try {
                 Character character = characterService.getById(req.getCharacterId());
                 String systemPrompt = characterService.buildSystemPrompt(character);
-                List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
 
-                // Save user message first
+                // RAG: 웹 검색 컨텍스트 주입
+                boolean doSearch = req.isWebSearch() || webCrawlerService.needsWebSearch(req.getMessage());
+                if (doSearch) {
+                    String webCtx = webCrawlerService.getWebContext(req.getMessage());
+                    if (!webCtx.isBlank()) systemPrompt += webCtx;
+                }
+
+                List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
                 messageService.save(req.getCharacterId(), req.getMessage(), true);
 
-                // Stream AI response
                 ollamaService.streamChat(systemPrompt, history, req.getMessage(), emitter);
-
-                // After streaming, save AI response (done event contains full response)
-                // Handled by frontend calling /messages/save after receiving done event
             } catch (Exception e) {
                 emitter.completeWithError(e);
             }
@@ -71,8 +75,14 @@ public class ChatController {
     public Message sendMessage(@Valid @RequestBody ChatRequest req) throws Exception {
         Character character = characterService.getById(req.getCharacterId());
         String systemPrompt = characterService.buildSystemPrompt(character);
-        List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
 
+        boolean doSearch = req.isWebSearch() || webCrawlerService.needsWebSearch(req.getMessage());
+        if (doSearch) {
+            String webCtx = webCrawlerService.getWebContext(req.getMessage());
+            if (!webCtx.isBlank()) systemPrompt += webCtx;
+        }
+
+        List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
         messageService.save(req.getCharacterId(), req.getMessage(), true);
 
         String aiResponse = ollamaService.chat(systemPrompt, history, req.getMessage());

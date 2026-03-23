@@ -2,6 +2,10 @@ server:
   port: ${SERVER_PORT:9090}
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: ${DB_URL:jdbc:h2:file:./soulpal-db;DB_CLOSE_ON_EXIT=FALSE}
     username: ${DB_USER:sa}
@@ -18,7 +22,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:soulpal-default-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm}
-  expiration: 604800000  # 7일
+  access-expiration: 3600000     # 1시간
+  refresh-expiration: 604800000  # 7일
 
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

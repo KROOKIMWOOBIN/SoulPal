@@ -18,6 +18,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: soulpal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Ollama ───────────────────────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
@@ -58,11 +73,15 @@ services:
       - DB_URL=jdbc:postgresql://db:5432/soulpal
       - DB_USER=soulpal
       - DB_PASSWORD=soulpal1234
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=llama3
       - JWT_SECRET=soulpal-production-secret-change-this-in-real-deployment-please
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       ollama:
         condition: service_healthy
@@ -89,3 +108,4 @@ services:
 volumes:
   postgres_data:
   ollama_data:
+  redis_data:

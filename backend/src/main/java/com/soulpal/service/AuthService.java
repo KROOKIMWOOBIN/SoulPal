@@ -19,6 +19,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final TokenService tokenService;
 
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -36,8 +37,7 @@ public class AuthService {
                 .build();
         userRepository.save(user);
 
-        String token = jwtUtil.generate(user.getId(), user.getUsername());
-        return new AuthResponse(token, user.getId(), user.getUsername(), user.getEmail());
+        return buildAuthResponse(user);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -48,12 +48,18 @@ public class AuthService {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        String token = jwtUtil.generate(user.getId(), user.getUsername());
-        return new AuthResponse(token, user.getId(), user.getUsername(), user.getEmail());
+        return buildAuthResponse(user);
     }
 
     public User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken  = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
+        tokenService.saveRefreshToken(user.getId(), refreshToken);
+        return new AuthResponse(accessToken, refreshToken, user.getId(), user.getUsername(), user.getEmail());
     }
 }

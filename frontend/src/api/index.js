@@ -9,24 +9,70 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// 401이면 로그인 페이지로
+// 401 → 리프레시 토큰으로 재시도, 실패 시 로그인 페이지
+let isRefreshing = false
+let refreshQueue = []
+
 api.interceptors.response.use(
   res => res,
-  err => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('soulpal_token')
-      localStorage.removeItem('soulpal_user')
-      window.location.href = '/login'
+  async err => {
+    const original = err.config
+    if (err.response?.status !== 401 || original._retry) {
+      return Promise.reject(err)
     }
-    return Promise.reject(err)
+
+    const refreshToken = localStorage.getItem('soulpal_refresh')
+    if (!refreshToken) {
+      _redirectLogin()
+      return Promise.reject(err)
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshQueue.push({ resolve, reject })
+      }).then(token => {
+        original.headers.Authorization = `Bearer ${token}`
+        return api(original)
+      })
+    }
+
+    original._retry = true
+    isRefreshing = true
+
+    try {
+      const { data } = await api.post('/auth/refresh', { refreshToken })
+      const newToken = data.accessToken
+      localStorage.setItem('soulpal_token', newToken)
+      api.defaults.headers.common.Authorization = `Bearer ${newToken}`
+      refreshQueue.forEach(q => q.resolve(newToken))
+      refreshQueue = []
+      original.headers.Authorization = `Bearer ${newToken}`
+      return api(original)
+    } catch (_) {
+      refreshQueue.forEach(q => q.reject(_))
+      refreshQueue = []
+      _redirectLogin()
+      return Promise.reject(err)
+    } finally {
+      isRefreshing = false
+    }
   }
 )
+
+function _redirectLogin() {
+  localStorage.removeItem('soulpal_token')
+  localStorage.removeItem('soulpal_refresh')
+  localStorage.removeItem('soulpal_user')
+  window.location.href = '/login'
+}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
-  me: () => api.get('/auth/me')
+  login:    (data) => api.post('/auth/login', data),
+  logout:   ()     => api.post('/auth/logout'),
+  refresh:  (rt)   => api.post('/auth/refresh', { refreshToken: rt }),
+  me:       ()     => api.get('/auth/me')
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
