@@ -4,6 +4,7 @@ import com.soulpal.dto.ChatRequest;
 import com.soulpal.model.Character;
 import com.soulpal.model.Message;
 import com.soulpal.service.CharacterService;
+import com.soulpal.service.ContextBuilderService;
 import com.soulpal.service.MessageService;
 import com.soulpal.service.OllamaService;
 import com.soulpal.service.WebCrawlerService;
@@ -28,7 +29,12 @@ public class ChatController {
     private final MessageService messageService;
     private final OllamaService ollamaService;
     private final WebCrawlerService webCrawlerService;
+    private final ContextBuilderService contextBuilderService;
     private final ExecutorService executor = Executors.newCachedThreadPool();
+
+    // 항상 포함할 최신 메시지 수 / 관련 과거 메시지 추가 수
+    private static final int RECENT_COUNT = 10;
+    private static final int RELEVANT_EXTRA = 5;
 
     @GetMapping("/messages/{characterId}")
     public List<Message> getMessages(
@@ -52,6 +58,10 @@ public class ChatController {
                 Character character = characterService.getById(req.getCharacterId());
                 String systemPrompt = characterService.buildSystemPrompt(character);
 
+                // 개인화: 대화 이력 분석 컨텍스트 주입
+                String userCtx = contextBuilderService.buildUserContext(req.getCharacterId());
+                if (!userCtx.isBlank()) systemPrompt += userCtx;
+
                 // RAG: 웹 검색 컨텍스트 주입
                 boolean doSearch = req.isWebSearch() || webCrawlerService.needsWebSearch(req.getMessage());
                 if (doSearch) {
@@ -59,7 +69,9 @@ public class ChatController {
                     if (!webCtx.isBlank()) systemPrompt += webCtx;
                 }
 
-                List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
+                // 관련성 기반 히스토리 선택
+                List<Message> history = contextBuilderService.getRelevantHistory(
+                        req.getCharacterId(), req.getMessage(), RECENT_COUNT, RELEVANT_EXTRA);
                 messageService.save(req.getCharacterId(), req.getMessage(), true);
 
                 ollamaService.streamChat(systemPrompt, history, req.getMessage(), emitter);
@@ -76,13 +88,19 @@ public class ChatController {
         Character character = characterService.getById(req.getCharacterId());
         String systemPrompt = characterService.buildSystemPrompt(character);
 
+        // 개인화: 대화 이력 분석 컨텍스트 주입
+        String userCtx = contextBuilderService.buildUserContext(req.getCharacterId());
+        if (!userCtx.isBlank()) systemPrompt += userCtx;
+
         boolean doSearch = req.isWebSearch() || webCrawlerService.needsWebSearch(req.getMessage());
         if (doSearch) {
             String webCtx = webCrawlerService.getWebContext(req.getMessage());
             if (!webCtx.isBlank()) systemPrompt += webCtx;
         }
 
-        List<Message> history = messageService.getRecentForContext(req.getCharacterId(), req.getHistoryCount());
+        // 관련성 기반 히스토리 선택
+        List<Message> history = contextBuilderService.getRelevantHistory(
+                req.getCharacterId(), req.getMessage(), RECENT_COUNT, RELEVANT_EXTRA);
         messageService.save(req.getCharacterId(), req.getMessage(), true);
 
         String aiResponse = ollamaService.chat(systemPrompt, history, req.getMessage());
