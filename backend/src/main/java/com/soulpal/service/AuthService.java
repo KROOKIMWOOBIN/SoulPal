@@ -6,6 +6,7 @@ import com.soulpal.dto.LoginRequest;
 import com.soulpal.dto.RegisterRequest;
 import com.soulpal.model.User;
 import com.soulpal.repository.CharacterRepository;
+import com.soulpal.repository.GroupRoomRepository;
 import com.soulpal.repository.MessageRepository;
 import com.soulpal.repository.ProjectRepository;
 import com.soulpal.repository.UserRepository;
@@ -28,6 +29,7 @@ public class AuthService {
     private final CharacterRepository characterRepository;
     private final MessageRepository messageRepository;
     private final ProjectRepository projectRepository;
+    private final GroupRoomRepository groupRoomRepository;
 
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -72,8 +74,9 @@ public class AuthService {
                 .stream().map(c -> c.getId()).toList();
         characterIds.forEach(messageRepository::deleteByCharacterId);
 
-        // 캐릭터 → 프로젝트 → 유저 삭제
+        // 캐릭터 → 그룹 방 → 프로젝트 → 유저 삭제
         characterRepository.deleteAllByUserId(userId);
+        groupRoomRepository.deleteAllByUserId(userId);
         projectRepository.deleteAllByUserId(userId);
         userRepository.deleteById(userId);
 

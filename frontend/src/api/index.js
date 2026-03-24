@@ -159,3 +159,63 @@ export function streamChatV2(payload, onToken, onDone, onError) {
 }
 
 export const streamChat = streamChatV2
+
+// ── Group Rooms ───────────────────────────────────────────────────────────────
+export const groupRoomApi = {
+  getAll: (projectId) => api.get('/group-rooms', { params: { projectId } }),
+  getById: (id) => api.get(`/group-rooms/${id}`),
+  create: (data) => api.post('/group-rooms', data),
+  delete: (id) => api.delete(`/group-rooms/${id}`),
+  getMessages: (roomId, page = 0, size = 30) =>
+    api.get(`/group-chat/messages/${roomId}`, { params: { page, size } })
+}
+
+// ── Group Chat SSE Streaming ──────────────────────────────────────────────────
+export function streamGroupChat(payload, onCharStart, onToken, onCharDone, onDone, onError) {
+  const ctrl = new AbortController()
+  const token = localStorage.getItem('soulpal_token')
+
+  fetch('/api/group-chat/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload),
+    signal: ctrl.signal
+  }).then(async res => {
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let lastEvent = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n')
+      buffer = parts.pop()
+
+      for (const line of parts) {
+        if (line.startsWith('event:')) {
+          lastEvent = line.slice(6).trim()
+        } else if (line.startsWith('data:')) {
+          const raw = line.slice(5).trim()
+          try {
+            const parsed = JSON.parse(raw)
+            if      (lastEvent === 'char-start') onCharStart(parsed)
+            else if (lastEvent === 'token')      onToken(parsed)
+            else if (lastEvent === 'char-done')  onCharDone(parsed)
+            else if (lastEvent === 'done')       onDone()
+            else if (lastEvent === 'error')      onError(parsed)
+          } catch {}
+          lastEvent = ''
+        }
+      }
+    }
+  }).catch(err => {
+    if (err.name !== 'AbortError') onError(err)
+  })
+
+  return ctrl
+}

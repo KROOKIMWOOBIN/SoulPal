@@ -10,7 +10,8 @@ const routes = [
   { path: '/project/:projectId',                  component: () => import('../views/HomeView.vue'),     props: true, meta: { auth: true } },
   { path: '/project/:projectId/create',           component: () => import('../views/CreationView.vue'), props: true, meta: { auth: true } },
   { path: '/project/:projectId/edit/:id',         component: () => import('../views/CreationView.vue'), props: true, meta: { auth: true } },
-  { path: '/chat/:id',                            component: () => import('../views/ChatView.vue'),     props: true, meta: { auth: true } },
+  { path: '/chat/:id',                            component: () => import('../views/ChatView.vue'),      props: true, meta: { auth: true } },
+  { path: '/group/:id',                           component: () => import('../views/GroupChatView.vue'), props: true, meta: { auth: true } },
   { path: '/settings',                            component: () => import('../views/SettingsView.vue'), meta: { auth: true } }
 ]
 

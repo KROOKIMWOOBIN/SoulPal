@@ -94,6 +94,42 @@ public class OllamaService {
         }
     }
 
+    /**
+     * 스트리밍 응답을 콜백으로 처리합니다 (그룹 채팅용).
+     * 각 토큰이 생성될 때마다 tokenConsumer가 호출됩니다.
+     */
+    public void streamChatWithCallback(String systemPrompt, List<Message> history,
+                                       String userMessage, java.util.function.Consumer<String> tokenConsumer) {
+        try {
+            byte[] body = buildBody(systemPrompt, history, userMessage, true);
+
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/chat"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(180))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                    .build();
+
+            HttpResponse<java.io.InputStream> resp = httpClient.send(
+                    req, HttpResponse.BodyHandlers.ofInputStream());
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(resp.body()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    JsonNode node = objectMapper.readTree(line);
+                    boolean done  = node.path("done").asBoolean(false);
+                    String token  = node.path("message").path("content").asText("");
+                    if (!token.isEmpty()) tokenConsumer.accept(token);
+                    if (done) return;
+                }
+            }
+        } catch (Exception e) {
+            log.error("[Ollama] streamChatWithCallback 오류: {}", e.getMessage(), e);
+            throw new com.soulpal.exception.BusinessException(com.soulpal.exception.ErrorCode.AI_SERVICE_ERROR);
+        }
+    }
+
     public String chat(String systemPrompt, List<Message> history, String userMessage) {
         try {
             byte[] body = buildBody(systemPrompt, history, userMessage, false);
