@@ -18,4 +18,6 @@ public interface CharacterRepository extends JpaRepository<Character, String> {
     List<Character> findAllByUserIdOrderByLastMessageAtDescCreatedAtDesc(String userId);
 
     Optional<Character> findByIdAndUserId(String id, String userId);
+    List<Character> findAllByUserId(String userId);
+    void deleteAllByUserId(String userId);
 }

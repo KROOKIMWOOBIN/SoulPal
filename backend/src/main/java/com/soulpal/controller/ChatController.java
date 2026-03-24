@@ -7,19 +7,26 @@ import com.soulpal.service.CharacterService;
 import com.soulpal.service.ContextBuilderService;
 import com.soulpal.service.MessageService;
 import com.soulpal.service.OllamaService;
+import com.soulpal.service.RateLimitService;
 import com.soulpal.service.WebCrawlerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
+@Tag(name = "Chat", description = "채팅 API")
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
@@ -30,27 +37,45 @@ public class ChatController {
     private final OllamaService ollamaService;
     private final WebCrawlerService webCrawlerService;
     private final ContextBuilderService contextBuilderService;
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final RateLimitService rateLimitService;
 
-    // 항상 포함할 최신 메시지 수 / 관련 과거 메시지 추가 수
-    private static final int RECENT_COUNT = 10;
+    // 스레드 풀: core=5, max=20, 큐=100 (무제한 스레드 방지)
+    private final ExecutorService executor = new ThreadPoolExecutor(
+            5, 20, 60L, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(100),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
+    private static final int RECENT_COUNT  = 10;
     private static final int RELEVANT_EXTRA = 5;
 
+    @Operation(summary = "메시지 목록 조회 (페이징)")
     @GetMapping("/messages/{characterId}")
     public List<Message> getMessages(
             @PathVariable String characterId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "30") int size) {
+            @RequestParam(defaultValue = "30") int size,
+            Authentication auth) {
+        characterService.verifyOwnership(characterId, (String) auth.getPrincipal());
         return messageService.getMessages(characterId, page, size);
     }
 
+    @Operation(summary = "메시지 검색")
     @GetMapping("/messages/{characterId}/search")
-    public List<Message> searchMessages(@PathVariable String characterId, @RequestParam String q) {
+    public List<Message> searchMessages(
+            @PathVariable String characterId,
+            @RequestParam String q,
+            Authentication auth) {
+        characterService.verifyOwnership(characterId, (String) auth.getPrincipal());
         return messageService.searchMessages(characterId, q);
     }
 
+    @Operation(summary = "SSE 스트리밍 채팅")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@Valid @RequestBody ChatRequest req) {
+    public SseEmitter streamChat(@Valid @RequestBody ChatRequest req, Authentication auth) {
+        String userId = (String) auth.getPrincipal();
+        rateLimitService.checkChat(userId);
+
         SseEmitter emitter = new SseEmitter(180_000L);
 
         executor.execute(() -> {
@@ -58,18 +83,15 @@ public class ChatController {
                 Character character = characterService.getById(req.getCharacterId());
                 String systemPrompt = characterService.buildSystemPrompt(character);
 
-                // 개인화: 대화 이력 분석 컨텍스트 주입
                 String userCtx = contextBuilderService.buildUserContext(req.getCharacterId());
                 if (!userCtx.isBlank()) systemPrompt += userCtx;
 
-                // RAG: 웹 검색 컨텍스트 주입
                 boolean doSearch = req.isWebSearch() || webCrawlerService.needsWebSearch(req.getMessage());
                 if (doSearch) {
                     String webCtx = webCrawlerService.getWebContext(req.getMessage());
                     if (!webCtx.isBlank()) systemPrompt += webCtx;
                 }
 
-                // 관련성 기반 히스토리 선택
                 List<Message> history = contextBuilderService.getRelevantHistory(
                         req.getCharacterId(), req.getMessage(), RECENT_COUNT, RELEVANT_EXTRA);
                 messageService.save(req.getCharacterId(), req.getMessage(), true);
@@ -83,12 +105,15 @@ public class ChatController {
         return emitter;
     }
 
+    @Operation(summary = "일반 채팅 (동기)")
     @PostMapping("/send")
-    public Message sendMessage(@Valid @RequestBody ChatRequest req) throws Exception {
+    public Message sendMessage(@Valid @RequestBody ChatRequest req, Authentication auth) throws Exception {
+        String userId = (String) auth.getPrincipal();
+        rateLimitService.checkChat(userId);
+
         Character character = characterService.getById(req.getCharacterId());
         String systemPrompt = characterService.buildSystemPrompt(character);
 
-        // 개인화: 대화 이력 분석 컨텍스트 주입
         String userCtx = contextBuilderService.buildUserContext(req.getCharacterId());
         if (!userCtx.isBlank()) systemPrompt += userCtx;
 
@@ -98,7 +123,6 @@ public class ChatController {
             if (!webCtx.isBlank()) systemPrompt += webCtx;
         }
 
-        // 관련성 기반 히스토리 선택
         List<Message> history = contextBuilderService.getRelevantHistory(
                 req.getCharacterId(), req.getMessage(), RECENT_COUNT, RELEVANT_EXTRA);
         messageService.save(req.getCharacterId(), req.getMessage(), true);
@@ -110,23 +134,32 @@ public class ChatController {
         return aiMessage;
     }
 
+    @Operation(summary = "AI 메시지 저장")
     @PostMapping("/messages/save")
-    public Message saveAiMessage(@RequestBody Map<String, String> body) {
+    public Message saveAiMessage(@RequestBody Map<String, String> body, Authentication auth) {
         String characterId = body.get("characterId");
-        String content = body.get("content");
+        String content     = body.get("content");
+        // 소유권 검증
+        characterService.verifyOwnership(characterId, (String) auth.getPrincipal());
         Message msg = messageService.save(characterId, content, false);
         characterService.updateLastMessage(characterId, content);
         return msg;
     }
 
+    @Operation(summary = "마지막 AI 메시지 삭제")
     @DeleteMapping("/messages/{characterId}/last-ai")
-    public ResponseEntity<Void> deleteLastAiMessage(@PathVariable String characterId) {
+    public ResponseEntity<Void> deleteLastAiMessage(
+            @PathVariable String characterId, Authentication auth) {
+        characterService.verifyOwnership(characterId, (String) auth.getPrincipal());
         messageService.deleteLastAiMessage(characterId);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "대화 전체 삭제")
     @DeleteMapping("/messages/{characterId}")
-    public ResponseEntity<Void> clearMessages(@PathVariable String characterId) {
+    public ResponseEntity<Void> clearMessages(
+            @PathVariable String characterId, Authentication auth) {
+        characterService.verifyOwnership(characterId, (String) auth.getPrincipal());
         messageService.clearAll(characterId);
         return ResponseEntity.noContent().build();
     }

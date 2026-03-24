@@ -2,23 +2,47 @@ server:
   port: ${SERVER_PORT:9090}
 
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
   datasource:
-    url: ${DB_URL:jdbc:h2:file:./soulpal-db;DB_CLOSE_ON_EXIT=FALSE}
+    url: ${DB_URL:jdbc:h2:file:./soulpal-db;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL}
     username: ${DB_USER:sa}
     password: ${DB_PASSWORD:}
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: false
     open-in-view: false
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}   # dev는 ddl-auto:update 사용. prod에서 true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
   h2:
     console:
-      enabled: ${H2_CONSOLE_ENABLED:true}
+      enabled: ${H2_CONSOLE_ENABLED:false}
       path: /h2-console
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=300s  # 5분 캐시
+
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 100
 
 jwt:
   secret: ${JWT_SECRET:soulpal-default-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm}
@@ -30,6 +54,21 @@ ollama:
   model: ${OLLAMA_MODEL:llama3}
   timeout: 120
 
+# Rate Limiting (사용자당 분당 요청 수)
+rate-limit:
+  chat:
+    capacity: 30          # 최대 버킷 크기
+    refill-per-minute: 20 # 분당 충전량
+
 logging:
   level:
     com.soulpal: INFO
+  pattern:
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha

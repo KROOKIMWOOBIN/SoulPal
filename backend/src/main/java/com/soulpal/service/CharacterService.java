@@ -2,6 +2,7 @@ package com.soulpal.service;
 
 import com.soulpal.constants.CategoryData;
 import com.soulpal.dto.CharacterRequest;
+import com.soulpal.exception.ResourceNotFoundException;
 import com.soulpal.model.Character;
 import com.soulpal.repository.CharacterRepository;
 import com.soulpal.repository.MessageRepository;
@@ -39,7 +40,13 @@ public class CharacterService {
     public Character getById(String id) {
         String userId = currentUserId();
         return characterRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + id));
+    }
+
+    /** characterId가 userId 소유인지 검증. 불일치 시 ResourceNotFoundException. */
+    public void verifyOwnership(String characterId, String userId) {
+        characterRepository.findByIdAndUserId(characterId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + characterId));
     }
 
     @Transactional

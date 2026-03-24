@@ -1,0 +1,20 @@
+# ── 운영 환경 설정 ─────────────────────────────────────────────────────────────
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 스키마 검증만 (Flyway가 관리)
+
+  flyway:
+    enabled: true         # 운영에서 Flyway 활성화
+
+  h2:
+    console:
+      enabled: false      # 운영에서 H2 콘솔 비활성화
+
+logging:
+  level:
+    com.soulpal: INFO
+    org.springframework: WARN
+  pattern:
+    # 운영 환경: JSON 구조화 로그
+    console: '{"time":"%d{ISO8601}","level":"%-5level","logger":"%logger{36}","msg":"%msg"}%n'

@@ -3,6 +3,8 @@ package com.soulpal.service;
 import com.soulpal.model.Message;
 import com.soulpal.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -43,8 +45,10 @@ public class ContextBuilderService {
 
     /**
      * 대화 이력을 분석해 시스템 프롬프트에 추가할 개인화 컨텍스트 문자열을 반환합니다.
+     * 결과는 5분간 캐싱됩니다 (Caffeine).
      * 대화가 충분하지 않으면 빈 문자열을 반환합니다.
      */
+    @Cacheable(value = "userContext", key = "#characterId")
     public String buildUserContext(String characterId) {
         long totalMessages = messageRepository.countByCharacterId(characterId);
         if (totalMessages < 4) return "";

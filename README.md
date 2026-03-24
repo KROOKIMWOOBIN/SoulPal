@@ -8,6 +8,8 @@ AI 캐릭터와 대화하는 웹 애플리케이션.
 
 | 날짜 | 내용 | 핵심 포인트 |
 |------|------|-------------|
+| 2026-03-24 (월) | **단위 테스트 전면 작성 + Ollama 로그 제한 + Router lazy loading** | AuthService·CharacterService·RateLimitService·ContextBuilderService·GlobalExceptionHandler 테스트 (JUnit5+Mockito) / Ollama 컨테이너 json-file 로그 드라이버 10MB×3파일 제한 / Vue Router 전 뷰 lazy import 전환 (초기 번들 감소) |
+| 2026-03-24 (월) | **CTO 관점 백엔드 고도화** | GlobalExceptionHandler + ErrorCode Enum / Bucket4j Rate Limit / ThreadPoolExecutor bounded / Java11 HttpClient 커넥션 풀 / Caffeine @Cacheable / Flyway 마이그레이션 / Swagger springdoc / verifyOwnership 소유권 검증 / deleteAccount 회원탈퇴 |
 | 2026-03-24 (월) | **ollama-init 컨테이너 제거** | 모델 볼륨 캐시 확인 후 1회성 init 컨테이너 docker-compose에서 삭제 |
 | 2026-03-24 (월) | **전면 UI/UX 리디자인** | 그라디언트 디자인 시스템, 글래스모피즘 카드, 캐릭터별 컬러 아바타, 채팅 뒤로가기 프로젝트 복귀 수정, 메시지 입/출력 애니메이션, 생성 플로우 단계 인디케이터 개선 |
 | 2026-03-24 (월) | **DB 기반 개인화 Ollama 응답 알고리즘** | ContextBuilderService: 키워드 빈도 추출 / 감정 톤 감지 / 관련성 기반 히스토리 선택 |
@@ -78,8 +80,17 @@ docker compose down
 
 브라우저에서 http://localhost:8080 접속
 
-> **최초 실행 시**: `ollama-init` 컨테이너가 자동으로 `llama3` 모델을 pull합니다 (~4.7GB).
+> **최초 실행 시**: `ollama` 컨테이너 내부에서 `ollama pull llama3`을 직접 실행하거나 백엔드가 첫 요청 시 자동으로 모델을 불러옵니다 (~4.7GB).
 > 모델 데이터는 `ollama_data` 볼륨에 영구 저장되므로 재시작 시 재다운로드 없음.
+
+**Ollama 로그 제어:**
+```bash
+# 실시간 확인 (tail 100줄)
+docker compose logs --tail=100 -f ollama
+
+# 로그 파일 위치 (json-file 드라이버, 최대 10MB×3파일)
+# /var/lib/docker/containers/<id>/<id>-json.log
+```
 
 ### 로컬 개발
 

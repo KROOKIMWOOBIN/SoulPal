@@ -1,24 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import ProjectsView from '../views/ProjectsView.vue'
-import HomeView from '../views/HomeView.vue'
-import CreationView from '../views/CreationView.vue'
-import ChatView from '../views/ChatView.vue'
-import SettingsView from '../views/SettingsView.vue'
 
 const routes = [
   // 공개 라우트
-  { path: '/login', component: LoginView, meta: { guest: true } },
-  { path: '/register', component: RegisterView, meta: { guest: true } },
+  { path: '/login',    component: () => import('../views/LoginView.vue'),    meta: { guest: true } },
+  { path: '/register', component: () => import('../views/RegisterView.vue'), meta: { guest: true } },
 
   // 인증 필요 라우트
-  { path: '/', component: ProjectsView, meta: { auth: true } },
-  { path: '/project/:projectId', component: HomeView, props: true, meta: { auth: true } },
-  { path: '/project/:projectId/create', component: CreationView, props: true, meta: { auth: true } },
-  { path: '/project/:projectId/edit/:id', component: CreationView, props: true, meta: { auth: true } },
-  { path: '/chat/:id', component: ChatView, props: true, meta: { auth: true } },
-  { path: '/settings', component: SettingsView, meta: { auth: true } }
+  { path: '/',                                    component: () => import('../views/ProjectsView.vue'), meta: { auth: true } },
+  { path: '/project/:projectId',                  component: () => import('../views/HomeView.vue'),     props: true, meta: { auth: true } },
+  { path: '/project/:projectId/create',           component: () => import('../views/CreationView.vue'), props: true, meta: { auth: true } },
+  { path: '/project/:projectId/edit/:id',         component: () => import('../views/CreationView.vue'), props: true, meta: { auth: true } },
+  { path: '/chat/:id',                            component: () => import('../views/ChatView.vue'),     props: true, meta: { auth: true } },
+  { path: '/settings',                            component: () => import('../views/SettingsView.vue'), meta: { auth: true } }
 ]
 
 const router = createRouter({

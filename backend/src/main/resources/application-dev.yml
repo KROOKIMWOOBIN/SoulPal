@@ -1,0 +1,23 @@
+# ── 개발 환경 설정 ─────────────────────────────────────────────────────────────
+spring:
+  datasource:
+    url: jdbc:h2:file:./soulpal-db;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # 엔티티 변경 자동 반영
+    show-sql: false
+
+  h2:
+    console:
+      enabled: true      # 개발 편의용 H2 콘솔
+
+  flyway:
+    enabled: false       # 개발 중엔 ddl-auto 사용
+
+logging:
+  level:
+    com.soulpal: DEBUG
+    org.springframework.web: DEBUG

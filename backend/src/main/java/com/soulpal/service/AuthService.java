@@ -5,11 +5,16 @@ import com.soulpal.dto.AuthResponse;
 import com.soulpal.dto.LoginRequest;
 import com.soulpal.dto.RegisterRequest;
 import com.soulpal.model.User;
+import com.soulpal.repository.CharacterRepository;
+import com.soulpal.repository.MessageRepository;
+import com.soulpal.repository.ProjectRepository;
 import com.soulpal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -20,6 +25,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final TokenService tokenService;
+    private final CharacterRepository characterRepository;
+    private final MessageRepository messageRepository;
+    private final ProjectRepository projectRepository;
 
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -54,6 +62,23 @@ public class AuthService {
     public User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+    }
+
+    /** 회원 탈퇴: 메시지 → 캐릭터 → 프로젝트 → 유저 순으로 삭제, 토큰 무효화 */
+    @Transactional
+    public void deleteAccount(String userId, String accessToken) {
+        // 해당 유저의 캐릭터 ID 목록 수집 후 메시지 삭제
+        List<String> characterIds = characterRepository.findAllByUserId(userId)
+                .stream().map(c -> c.getId()).toList();
+        characterIds.forEach(messageRepository::deleteByCharacterId);
+
+        // 캐릭터 → 프로젝트 → 유저 삭제
+        characterRepository.deleteAllByUserId(userId);
+        projectRepository.deleteAllByUserId(userId);
+        userRepository.deleteById(userId);
+
+        // 토큰 무효화
+        tokenService.logout(userId, accessToken);
     }
 
     private AuthResponse buildAuthResponse(User user) {

@@ -41,6 +41,19 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // DB 마이그레이션
+    implementation 'org.flywaydb:flyway-core'
+
+    // 캐시 (Caffeine)
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    // API 문서 (Swagger/OpenAPI)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+    // Rate Limiting (Bucket4j)
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
 }
 
 // ─── Vue.js 프론트엔드 빌드 설정 ─────────────────────────────────────────────
