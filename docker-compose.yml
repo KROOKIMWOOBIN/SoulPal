@@ -48,18 +48,6 @@ services:
       retries: 20
       start_period: 60s
 
-  # Ollama 기동 후 모델 자동 pull (최초 1회, 이후 볼륨 캐시)
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: soulpal-ollama-init
-    depends_on:
-      ollama:
-        condition: service_healthy
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["ollama", "pull", "llama3"]
-    restart: "no"
-
   # ── Spring Boot (Tomcat) — port 9090 ─────────────────────────────────────────
   backend:
     build:

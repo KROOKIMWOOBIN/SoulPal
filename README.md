@@ -8,6 +8,7 @@ AI 캐릭터와 대화하는 웹 애플리케이션.
 
 | 날짜 | 내용 | 핵심 포인트 |
 |------|------|-------------|
+| 2026-03-24 (월) | **ollama-init 컨테이너 제거** | 모델 볼륨 캐시 확인 후 1회성 init 컨테이너 docker-compose에서 삭제 |
 | 2026-03-24 (월) | **전면 UI/UX 리디자인** | 그라디언트 디자인 시스템, 글래스모피즘 카드, 캐릭터별 컬러 아바타, 채팅 뒤로가기 프로젝트 복귀 수정, 메시지 입/출력 애니메이션, 생성 플로우 단계 인디케이터 개선 |
 | 2026-03-24 (월) | **DB 기반 개인화 Ollama 응답 알고리즘** | ContextBuilderService: 키워드 빈도 추출 / 감정 톤 감지 / 관련성 기반 히스토리 선택 |
 | 2026-03-24 (월) | **DB 인덱스 / 웹 RAG / Redis JWT** | 복합 인덱스, DuckDuckGo 크롤링 RAG, 액세스+리프레시 토큰 이중화 |
@@ -42,8 +43,7 @@ AI 캐릭터와 대화하는 웹 애플리케이션.
 |--------|--------|------|------|
 | `db` | `postgres:16-alpine` | 5432 | 메인 데이터베이스 |
 | `redis` | `redis:7-alpine` | 6379 | JWT 블랙리스트 / 리프레시 토큰 저장 |
-| `ollama` | `ollama/ollama:latest` | 11434 | LLM 추론 서버 |
-| `ollama-init` | `ollama/ollama:latest` | - | 최초 모델 pull (1회성) |
+| `ollama` | `ollama/ollama:latest` | 11434 | LLM 추론 서버 (llama3, 최초 실행 시 자동 pull) |
 | `backend` | 빌드 (Gradle) | 9090 | Spring Boot REST API |
 | `frontend` | 빌드 (Node → Nginx) | 8080 | Vue SPA — `/api/*` 역방향 프록시 |
 
