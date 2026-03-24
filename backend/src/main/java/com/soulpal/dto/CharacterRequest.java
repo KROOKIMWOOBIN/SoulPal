@@ -17,15 +17,15 @@ public class CharacterRequest {
     @NotBlank
     private String relationshipId;
 
-    @NotBlank
-    private String personalityId;
+    @NotNull
+    private List<String> personalityIds;
 
-    @NotBlank
-    private String speechStyleId;
+    @NotNull
+    private List<String> speechStyleIds;
 
     @NotNull
     private List<String> interestIds;
 
-    @NotBlank
-    private String appearanceId;
+    @NotNull
+    private List<String> appearanceIds;
 }

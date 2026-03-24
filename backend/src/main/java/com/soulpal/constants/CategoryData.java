@@ -76,7 +76,12 @@ public class CategoryData {
         "appearance", APPEARANCES
     );
 
+    /** "custom:<텍스트>" 형식의 커스텀 값을 처리합니다. */
     public static CategoryItem findById(String type, String id) {
+        if (id != null && id.startsWith("custom:")) {
+            String text = id.substring(7).trim();
+            return new CategoryItem(id, "✏️", text, text, text);
+        }
         List<CategoryItem> list = ALL.get(type);
         if (list == null) return null;
         return list.stream().filter(c -> c.id().equals(id)).findFirst().orElse(null);

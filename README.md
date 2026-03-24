@@ -8,6 +8,7 @@ AI 캐릭터와 대화하는 웹 애플리케이션.
 
 | 날짜 | 내용 | 핵심 포인트 |
 |------|------|-------------|
+| 2026-03-24 (월) | **캐릭터 생성 복수선택 + 직접입력 커스텀** | 성격·말투·분위기·관심사 복수선택, 모든 단계 "직접 입력" 옵션 추가, custom: 프리픽스 방식으로 Ollama 프롬프트 자동 주입, Flyway V2 마이그레이션 (ElementCollection 테이블 분리) |
 | 2026-03-24 (월) | **단위 테스트 전면 작성 + Ollama 로그 제한 + Router lazy loading** | AuthService·CharacterService·RateLimitService·ContextBuilderService·GlobalExceptionHandler 테스트 (JUnit5+Mockito) / Ollama 컨테이너 json-file 로그 드라이버 10MB×3파일 제한 / Vue Router 전 뷰 lazy import 전환 (초기 번들 감소) |
 | 2026-03-24 (월) | **CTO 관점 백엔드 고도화** | GlobalExceptionHandler + ErrorCode Enum / Bucket4j Rate Limit / ThreadPoolExecutor bounded / Java11 HttpClient 커넥션 풀 / Caffeine @Cacheable / Flyway 마이그레이션 / Swagger springdoc / verifyOwnership 소유권 검증 / deleteAccount 회원탈퇴 |
 | 2026-03-24 (월) | **ollama-init 컨테이너 제거** | 모델 볼륨 캐시 확인 후 1회성 init 컨테이너 docker-compose에서 삭제 |

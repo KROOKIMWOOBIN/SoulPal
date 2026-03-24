@@ -36,19 +36,25 @@ public class Character {
     @Column(name = "relationship_id")
     private String relationshipId;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "character_personalities", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "personality_id")
-    private String personalityId;
+    private List<String> personalityIds;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "character_speech_styles", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "speech_style_id")
-    private String speechStyleId;
+    private List<String> speechStyleIds;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "character_interests", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "interest_id")
     private List<String> interestIds;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "character_appearances", joinColumns = @JoinColumn(name = "character_id"))
     @Column(name = "appearance_id")
-    private String appearanceId;
+    private List<String> appearanceIds;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

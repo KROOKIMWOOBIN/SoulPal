@@ -42,6 +42,11 @@ class CharacterServiceTest {
                 .userId("user-1")
                 .projectId("proj-1")
                 .name("소울")
+                .relationshipId("bestfriend")
+                .personalityIds(List.of("lively"))
+                .speechStyleIds(List.of("casual"))
+                .interestIds(List.of("music"))
+                .appearanceIds(List.of("cute"))
                 .build();
     }
 
@@ -114,7 +119,10 @@ class CharacterServiceTest {
             CharacterRequest req = new CharacterRequest();
             req.setProjectId("proj-1");
             req.setName("소울");
-            req.setInterestIds(List.of());
+            req.setPersonalityIds(List.of("lively", "empathetic"));
+            req.setSpeechStyleIds(List.of("casual"));
+            req.setInterestIds(List.of("music"));
+            req.setAppearanceIds(List.of("cute"));
 
             given(characterRepository.save(any())).willReturn(testCharacter);
 
@@ -122,6 +130,37 @@ class CharacterServiceTest {
 
             assertThat(result.getName()).isEqualTo("소울");
             then(characterRepository).should().save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("커스텀 값 포함 생성 → buildSystemPrompt에서 커스텀 텍스트 사용")
+    void create_withCustomValues() {
+        try (MockedStatic<SecurityContextHolder> ignored = stubUserId("user-1")) {
+            CharacterRequest req = new CharacterRequest();
+            req.setProjectId("proj-1");
+            req.setName("커스텀");
+            req.setPersonalityIds(List.of("custom:철학적이고 내성적인"));
+            req.setSpeechStyleIds(List.of("custom:시적인 표현을 즐기는"));
+            req.setInterestIds(List.of("music"));
+            req.setAppearanceIds(List.of("custom:신비로운 분위기"));
+
+            Character customChar = Character.builder()
+                    .id("char-2").userId("user-1").projectId("proj-1").name("커스텀")
+                    .relationshipId("bestfriend")
+                    .personalityIds(req.getPersonalityIds())
+                    .speechStyleIds(req.getSpeechStyleIds())
+                    .interestIds(req.getInterestIds())
+                    .appearanceIds(req.getAppearanceIds())
+                    .build();
+            given(characterRepository.save(any())).willReturn(customChar);
+
+            Character result = characterService.create(req);
+            String prompt = characterService.buildSystemPrompt(result);
+
+            assertThat(prompt).contains("철학적이고 내성적인");
+            assertThat(prompt).contains("시적인 표현을 즐기는");
+            assertThat(prompt).contains("신비로운 분위기");
         }
     }
 

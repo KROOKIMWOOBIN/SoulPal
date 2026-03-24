@@ -58,10 +58,10 @@ public class CharacterService {
                 .projectId(req.getProjectId())
                 .name(req.getName())
                 .relationshipId(req.getRelationshipId())
-                .personalityId(req.getPersonalityId())
-                .speechStyleId(req.getSpeechStyleId())
+                .personalityIds(req.getPersonalityIds())
+                .speechStyleIds(req.getSpeechStyleIds())
                 .interestIds(req.getInterestIds())
-                .appearanceId(req.getAppearanceId())
+                .appearanceIds(req.getAppearanceIds())
                 .createdAt(LocalDateTime.now())
                 .build();
         return characterRepository.save(character);
@@ -72,10 +72,10 @@ public class CharacterService {
         Character character = getById(id);
         character.setName(req.getName());
         character.setRelationshipId(req.getRelationshipId());
-        character.setPersonalityId(req.getPersonalityId());
-        character.setSpeechStyleId(req.getSpeechStyleId());
+        character.setPersonalityIds(req.getPersonalityIds());
+        character.setSpeechStyleIds(req.getSpeechStyleIds());
         character.setInterestIds(req.getInterestIds());
-        character.setAppearanceId(req.getAppearanceId());
+        character.setAppearanceIds(req.getAppearanceIds());
         return characterRepository.save(character);
     }
 
@@ -103,12 +103,27 @@ public class CharacterService {
 
     public String buildSystemPrompt(Character character) {
         CategoryData.CategoryItem relationship = CategoryData.findById("relationship", character.getRelationshipId());
-        CategoryData.CategoryItem personality = CategoryData.findById("personality", character.getPersonalityId());
-        CategoryData.CategoryItem speechStyle = CategoryData.findById("speechStyle", character.getSpeechStyleId());
-        CategoryData.CategoryItem appearance = CategoryData.findById("appearance", character.getAppearanceId());
+
+        String personalityText = character.getPersonalityIds().stream()
+                .map(id -> CategoryData.findById("personality", id))
+                .filter(Objects::nonNull)
+                .map(CategoryData.CategoryItem::prompt)
+                .collect(Collectors.joining(" 또한 "));
+
+        String speechStyleText = character.getSpeechStyleIds().stream()
+                .map(id -> CategoryData.findById("speechStyle", id))
+                .filter(Objects::nonNull)
+                .map(CategoryData.CategoryItem::prompt)
+                .collect(Collectors.joining(" 또한 "));
 
         String interestText = character.getInterestIds().stream()
                 .map(id -> CategoryData.findById("interest", id))
+                .filter(Objects::nonNull)
+                .map(CategoryData.CategoryItem::prompt)
+                .collect(Collectors.joining(", "));
+
+        String appearanceText = character.getAppearanceIds().stream()
+                .map(id -> CategoryData.findById("appearance", id))
                 .filter(Objects::nonNull)
                 .map(CategoryData.CategoryItem::prompt)
                 .collect(Collectors.joining(", "));
@@ -130,10 +145,10 @@ public class CharacterService {
                 """,
                 character.getName(),
                 relationship != null ? relationship.prompt() : "",
-                personality != null ? personality.prompt() : "",
-                speechStyle != null ? speechStyle.prompt() : "",
+                personalityText,
+                speechStyleText,
                 interestText,
-                appearance != null ? appearance.prompt() : ""
+                appearanceText
         );
     }
 }
