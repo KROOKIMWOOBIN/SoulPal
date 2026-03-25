@@ -166,60 +166,13 @@ npm run test   # Vitest 단위 테스트 실행
 - `characters`: `(user_id, project_id)`, `(user_id, project_id, last_message_at)` 복합 인덱스
 - `projects`: `(user_id)` 인덱스
 
-## API 명세
+## API 문서 (Swagger)
 
-### 인증
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/api/auth/register` | 회원가입 (비밀번호 8자 이상) |
-| POST | `/api/auth/login` | 로그인 |
-| POST | `/api/auth/logout` | 로그아웃 (토큰 무효화) |
-| POST | `/api/auth/refresh` | 액세스 토큰 재발급 |
-| GET | `/api/auth/me` | 내 정보 조회 |
+서버 실행 후 아래 주소에서 인터랙티브 API 문서를 확인할 수 있습니다.
 
-### 프로젝트
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/api/projects` | 프로젝트 목록 |
-| GET | `/api/projects/:id` | 프로젝트 단건 조회 |
-| POST | `/api/projects` | 프로젝트 생성 |
-| PUT | `/api/projects/:id` | 프로젝트 수정 |
-| DELETE | `/api/projects/:id` | 프로젝트 삭제 |
+| 환경 | Swagger UI | OpenAPI JSON |
+|------|-----------|--------------|
+| Docker (포트 8080) | http://localhost:8080/swagger-ui.html | http://localhost:8080/api-docs |
+| 로컬 개발 (포트 9090) | http://localhost:9090/swagger-ui.html | http://localhost:9090/api-docs |
 
-### 캐릭터
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/api/characters?projectId=&sort=&page=&size=` | 캐릭터 목록 (페이지네이션, 정렬: recent/name/favorite) |
-| GET | `/api/characters/:id` | 캐릭터 단건 조회 |
-| POST | `/api/characters` | 캐릭터 생성 |
-| PUT | `/api/characters/:id` | 캐릭터 수정 |
-| DELETE | `/api/characters/:id` | 캐릭터 삭제 |
-| POST | `/api/characters/:id/favorite` | 즐겨찾기 토글 |
-| GET | `/api/categories` | 카테고리 목록 (성격/관계 등) |
-
-### 채팅
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/api/chat/messages/:characterId?page=&size=` | 메시지 목록 (페이징) |
-| GET | `/api/chat/messages/:characterId/search?q=` | 메시지 검색 |
-| POST | `/api/chat/stream` | SSE 스트리밍 채팅 (권장) |
-| POST | `/api/chat/send` | 일반 채팅 (동기) |
-| POST | `/api/chat/messages/save` | AI 메시지 저장 |
-| DELETE | `/api/chat/messages/:characterId/last-ai` | 마지막 AI 메시지 삭제 |
-| DELETE | `/api/chat/messages/:characterId` | 대화 전체 삭제 |
-
-### 그룹 채팅
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/api/group-rooms?projectId=` | 그룹 대화방 목록 |
-| GET | `/api/group-rooms/:id` | 대화방 단건 조회 |
-| POST | `/api/group-rooms` | 대화방 생성 |
-| DELETE | `/api/group-rooms/:id` | 대화방 삭제 |
-| GET | `/api/group-chat/messages/:roomId?page=&size=` | 그룹 메시지 목록 |
-| POST | `/api/group-chat/stream` | 그룹 SSE 스트리밍 채팅 |
-
-### 운영
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/actuator/health` | 헬스체크 (인증 불필요) |
-| POST | `/api/logs/error` | 프론트엔드 에러 수집 (IP 분당 20건 제한) |
+> Swagger UI에서 우측 상단 **Authorize** 버튼 → `Bearer <액세스 토큰>` 입력 시 인증이 필요한 API도 직접 테스트할 수 있습니다.
