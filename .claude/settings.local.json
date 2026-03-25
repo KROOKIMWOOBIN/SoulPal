@@ -5,7 +5,13 @@
       "Bash(flutter pub:*)",
       "Bash(where flutter:*)",
       "WebSearch",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Read(//mnt/d/coding/**)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(curl:*)",
+      "Bash(python3 -m json.tool)"
     ]
   }
 }
