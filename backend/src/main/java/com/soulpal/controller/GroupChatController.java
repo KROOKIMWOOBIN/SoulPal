@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,10 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 @Tag(name = "GroupChat", description = "그룹 대화 API")
 @RestController
@@ -31,12 +29,8 @@ public class GroupChatController {
 
     private final GroupChatService groupChatService;
     private final RateLimitService rateLimitService;
-
-    private final ExecutorService executor = new ThreadPoolExecutor(
-            5, 20, 60L, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(100),
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
+    @Qualifier("sseExecutor")
+    private final ExecutorService executor;
 
     // ── 대화방 관리 ────────────────────────────────────────────────────────────
 

@@ -1,7 +1,10 @@
 package com.soulpal.service;
 
 import com.soulpal.config.JwtUtil;
+import com.soulpal.exception.BusinessException;
+import com.soulpal.exception.ErrorCode;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -43,10 +46,15 @@ public class TokenService {
 
     /** 리프레시 토큰으로 새 액세스 토큰 발급 */
     public String refresh(String refreshToken) {
-        Claims claims = jwtUtil.parse(refreshToken);
+        Claims claims;
+        try {
+            claims = jwtUtil.parse(refreshToken);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
 
         if (!"refresh".equals(claims.get("type", String.class))) {
-            throw new IllegalArgumentException("리프레시 토큰이 아닙니다.");
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         String userId   = claims.getSubject();

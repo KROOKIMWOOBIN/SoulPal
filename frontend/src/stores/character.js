@@ -7,15 +7,22 @@ export const useCharacterStore = defineStore('character', {
     categories: null,
     sort: 'recent',
     loading: false,
-    error: null
+    error: null,
+    totalPages: 0,
+    totalElements: 0,
+    currentPage: 0,
+    pageSize: 20
   }),
 
   actions: {
-    async fetchAll(projectId) {
+    async fetchAll(projectId, page = 0) {
       this.loading = true
       try {
-        const { data } = await characterApi.getAll(projectId, this.sort)
-        this.characters = data
+        const { data } = await characterApi.getAll(projectId, this.sort, page, this.pageSize)
+        this.characters = data.content
+        this.totalPages = data.totalPages
+        this.totalElements = data.totalElements
+        this.currentPage = data.number
       } catch (e) {
         this.error = e.message
       } finally {

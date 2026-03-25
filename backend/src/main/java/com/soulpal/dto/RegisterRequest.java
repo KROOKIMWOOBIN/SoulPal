@@ -16,6 +16,6 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank
-    @Size(min = 6)
+    @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다")
     private String password;
 }

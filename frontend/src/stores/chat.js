@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { chatApi, streamChatV2 } from '../api'
+import { chatApi, streamChat as streamChatV2 } from '../api'
 import { characterApi } from '../api'
 
 export const useChatStore = defineStore('chat', {

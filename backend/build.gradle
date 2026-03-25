@@ -52,8 +52,8 @@ dependencies {
     // API 문서 (Swagger/OpenAPI)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
-    // Rate Limiting (Bucket4j)
-    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+    // 운영 모니터링
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 // ─── Vue.js 프론트엔드 빌드 설정 ─────────────────────────────────────────────

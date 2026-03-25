@@ -7,6 +7,8 @@ import com.soulpal.model.Character;
 import com.soulpal.repository.CharacterRepository;
 import com.soulpal.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,12 +30,13 @@ public class CharacterService {
         return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
-    public List<Character> getAll(String projectId, String sort) {
+    public Page<Character> getAll(String projectId, String sort, int page, int size) {
         String userId = currentUserId();
+        PageRequest pageable = PageRequest.of(page, size);
         return switch (sort) {
-            case "name" -> characterRepository.findAllByUserIdAndProjectIdOrderByNameAsc(userId, projectId);
-            case "favorite" -> characterRepository.findAllByUserIdAndProjectIdAndFavoriteTrueOrderByLastMessageAtDesc(userId, projectId);
-            default -> characterRepository.findAllByUserIdAndProjectIdOrderByLastMessageAtDescCreatedAtDesc(userId, projectId);
+            case "name"     -> characterRepository.findAllByUserIdAndProjectIdOrderByNameAsc(userId, projectId, pageable);
+            case "favorite" -> characterRepository.findAllByUserIdAndProjectIdAndFavoriteTrueOrderByLastMessageAtDesc(userId, projectId, pageable);
+            default         -> characterRepository.findAllByUserIdAndProjectIdOrderByLastMessageAtDescCreatedAtDesc(userId, projectId, pageable);
         };
     }
 

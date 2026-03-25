@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,10 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 @Tag(name = "Chat", description = "채팅 API")
 @RestController
@@ -38,13 +36,8 @@ public class ChatController {
     private final WebCrawlerService webCrawlerService;
     private final ContextBuilderService contextBuilderService;
     private final RateLimitService rateLimitService;
-
-    // 스레드 풀: core=5, max=20, 큐=100 (무제한 스레드 방지)
-    private final ExecutorService executor = new ThreadPoolExecutor(
-            5, 20, 60L, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(100),
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
+    @Qualifier("sseExecutor")
+    private final ExecutorService executor;
 
     private static final int RECENT_COUNT  = 10;
     private static final int RELEVANT_EXTRA = 5;

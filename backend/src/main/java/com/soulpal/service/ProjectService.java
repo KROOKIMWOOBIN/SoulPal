@@ -1,6 +1,8 @@
 package com.soulpal.service;
 
 import com.soulpal.dto.ProjectRequest;
+import com.soulpal.exception.BusinessException;
+import com.soulpal.exception.ErrorCode;
 import com.soulpal.model.Project;
 import com.soulpal.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,7 @@ public class ProjectService {
 
     public Project getById(String id, String userId) {
         return projectRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("프로젝트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
     }
 
     public Project create(ProjectRequest req, String userId) {
