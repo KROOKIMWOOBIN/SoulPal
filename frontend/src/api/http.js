@@ -130,6 +130,8 @@ export function createSseStream(url, payload, handlers) {
         if (!r.ok) { redirectLogin(); return }
         const { accessToken } = await r.json()
         localStorage.setItem('soulpal_token', accessToken)
+        // axios 기본 헤더도 동기화
+        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`
         return doFetch(true)
       } catch {
         redirectLogin(); return
@@ -137,6 +139,11 @@ export function createSseStream(url, payload, handlers) {
     }
 
     if (!res.ok) {
+      // 재시도 후에도 401이면 세션 만료 → 로그인으로 이동
+      if (res.status === 401) {
+        redirectLogin()
+        return
+      }
       handlers['error']?.({ status: res.status })
       return
     }
