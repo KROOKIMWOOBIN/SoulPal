@@ -1,0 +1,27 @@
+# ── 통합 테스트 전용 설정 ──────────────────────────────────────────────────────
+# IntegrationTestBase의 @DynamicPropertySource가 DB/Redis 접속 정보를 덮어씁니다.
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop    # 매 테스트 실행 시 스키마 재생성
+    show-sql: false
+  flyway:
+    enabled: false             # 통합 테스트는 ddl-auto로 스키마 관리
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=60s
+
+logging:
+  level:
+    com.soulpal: DEBUG          # 테스트에서 상세 로그 활성화
+    org.testcontainers: INFO
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

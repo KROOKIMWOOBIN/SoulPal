@@ -1,6 +1,7 @@
 package com.soulpal.service;
 
 import com.soulpal.exception.RateLimitExceededException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import java.time.Duration;
  * Redis 기반 Rate Limiter (슬라이딩 윈도우 — 분당 카운터)
  * - 채팅 API: 분당 N건 제한
  */
+@Slf4j
 @Service
 public class RateLimitService {
 
@@ -30,7 +32,11 @@ public class RateLimitService {
         if (count == 1) {
             redis.expire(key, Duration.ofMinutes(2));
         }
+        if (count >= capacity * 0.8 && count < capacity) {
+            log.warn("[RATE_LIMIT] 한도 근접: userId={}, count={}/{}", userId, count, capacity);
+        }
         if (count > capacity) {
+            log.warn("[RATE_LIMIT] 한도 초과: userId={}, count={}/{}", userId, count, capacity);
             throw new RateLimitExceededException();
         }
     }

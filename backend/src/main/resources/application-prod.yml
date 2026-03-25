@@ -15,6 +15,3 @@ logging:
   level:
     com.soulpal: INFO
     org.springframework: WARN
-  pattern:
-    # 운영 환경: JSON 구조화 로그
-    console: '{"time":"%d{ISO8601}","level":"%-5level","logger":"%logger{36}","msg":"%msg"}%n'

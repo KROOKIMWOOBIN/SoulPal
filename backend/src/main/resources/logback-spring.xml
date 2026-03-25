@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!-- ── Dev: 컬러 콘솔, 사람이 읽기 쉬운 포맷 ──────────────────────────────── -->
+  <springProfile name="dev">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} [%highlight(%-5level)] %cyan(%logger{30}) [req:%X{requestId:--}] [user:%X{userId:-ANON}] - %msg%n%ex</pattern>
+      </encoder>
+    </appender>
+
+    <logger name="com.soulpal"          level="DEBUG"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.hibernate.SQL"    level="DEBUG"/>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!-- ── Prod: JSON 구조화 로그 (logstash-logback-encoder) ─────────────────── -->
+  <springProfile name="prod">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <!-- UTC 타임스탬프 -->
+        <timeZone>UTC</timeZone>
+        <!-- 불필요한 기본 필드 제거 -->
+        <fieldNames>
+          <version>[ignore]</version>
+          <levelValue>[ignore]</levelValue>
+        </fieldNames>
+        <!-- 짧은 logger 이름 -->
+        <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
+        <!-- MDC 필드 자동 포함: requestId, userId, method, uri -->
+        <includeMdcKeyName>requestId</includeMdcKeyName>
+        <includeMdcKeyName>userId</includeMdcKeyName>
+        <includeMdcKeyName>method</includeMdcKeyName>
+        <includeMdcKeyName>uri</includeMdcKeyName>
+      </encoder>
+    </appender>
+
+    <logger name="com.soulpal"    level="INFO"/>
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate"  level="WARN"/>
+    <logger name="com.zaxxer"     level="WARN"/>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+</configuration>

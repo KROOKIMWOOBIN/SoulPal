@@ -11,6 +11,7 @@ import com.soulpal.repository.MessageRepository;
 import com.soulpal.repository.ProjectRepository;
 import com.soulpal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -33,9 +35,11 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
+            log.warn("[AUTH] 회원가입 실패 - 이메일 중복: {}", req.getEmail());
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
         if (userRepository.existsByUsername(req.getUsername())) {
+            log.warn("[AUTH] 회원가입 실패 - 사용자명 중복: {}", req.getUsername());
             throw new IllegalArgumentException("이미 사용 중인 사용자명입니다.");
         }
 
@@ -46,18 +50,24 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .build();
         userRepository.save(user);
+        log.info("[AUTH] 회원가입 완료: userId={}, email={}", user.getId(), user.getEmail());
 
         return buildAuthResponse(user);
     }
 
     public AuthResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
+                .orElseThrow(() -> {
+                    log.warn("[AUTH] 로그인 실패 - 존재하지 않는 이메일: {}", req.getEmail());
+                    return new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+                });
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            log.warn("[AUTH] 로그인 실패 - 비밀번호 불일치: userId={}", user.getId());
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
+        log.info("[AUTH] 로그인 성공: userId={}", user.getId());
         return buildAuthResponse(user);
     }
 
@@ -82,6 +92,7 @@ public class AuthService {
 
         // 토큰 무효화
         tokenService.logout(userId, accessToken);
+        log.info("[AUTH] 회원 탈퇴 완료: userId={}", userId);
     }
 
     private AuthResponse buildAuthResponse(User user) {

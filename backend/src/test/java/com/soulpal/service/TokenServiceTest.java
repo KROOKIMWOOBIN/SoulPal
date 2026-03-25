@@ -1,6 +1,7 @@
 package com.soulpal.service;
 
 import com.soulpal.config.JwtUtil;
+import com.soulpal.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,18 +77,17 @@ class TokenServiceTest {
     }
 
     @Test
-    @DisplayName("토큰 갱신 — 타입이 refresh가 아닌 경우 예외")
+    @DisplayName("토큰 갱신 — 타입이 refresh가 아닌 경우 BusinessException")
     void refresh_wrongType_throwsException() {
         given(jwtUtil.parse("access-token")).willReturn(claims);
         given(claims.get("type", String.class)).willReturn("access");
 
         assertThatThrownBy(() -> tokenService.refresh("access-token"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("리프레시 토큰이 아닙니다");
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("토큰 갱신 — 저장된 토큰과 불일치 시 예외")
+    @DisplayName("토큰 갱신 — 저장된 토큰과 불일치 시 BusinessException")
     void refresh_tokenMismatch_throwsException() {
         given(jwtUtil.parse("other-token")).willReturn(claims);
         given(claims.get("type", String.class)).willReturn("refresh");
@@ -95,8 +95,7 @@ class TokenServiceTest {
         given(valueOps.get("refresh:user-1")).willReturn("stored-token");
 
         assertThatThrownBy(() -> tokenService.refresh("other-token"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("유효하지 않은 리프레시 토큰");
+                .isInstanceOf(BusinessException.class);
     }
 
     // ── blacklist / isBlacklisted ─────────────────────────────────────────────

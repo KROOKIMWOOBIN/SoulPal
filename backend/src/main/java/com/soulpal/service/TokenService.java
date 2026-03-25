@@ -6,6 +6,7 @@ import com.soulpal.exception.ErrorCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.time.Duration;
  * - 리프레시 토큰 저장 (7일 TTL)
  * - 액세스 토큰 블랙리스트 (잔여 TTL 동안)
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TokenService {
@@ -50,10 +52,12 @@ public class TokenService {
         try {
             claims = jwtUtil.parse(refreshToken);
         } catch (JwtException | IllegalArgumentException e) {
+            log.warn("[REFRESH] JWT 파싱 실패: {}", e.getMessage());
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         if (!"refresh".equals(claims.get("type", String.class))) {
+            log.warn("[REFRESH] 토큰 타입 불일치: type={}", claims.get("type"));
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
@@ -61,8 +65,13 @@ public class TokenService {
         String username = claims.get("username", String.class);
         String stored   = getRefreshToken(userId);
 
+        if (stored == null) {
+            log.warn("[REFRESH] Redis에 저장된 토큰 없음: userId={}", userId);
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
         if (!refreshToken.equals(stored)) {
-            throw new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요.");
+            log.warn("[REFRESH] 토큰 불일치: userId={}", userId);
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         return jwtUtil.generateAccessToken(userId, username);

@@ -29,6 +29,8 @@ import java.util.List;
 @Service
 public class OllamaService {
 
+    private static final long SLOW_THRESHOLD_MS = 30_000; // 30초 이상이면 SLOW 경고
+
     @Value("${ollama.base-url}")
     private String baseUrl;
 
@@ -44,6 +46,9 @@ public class OllamaService {
 
     public void streamChat(String systemPrompt, List<Message> history,
                            String userMessage, SseEmitter emitter) {
+        long start = System.currentTimeMillis();
+        log.info("[OLLAMA] streamChat 시작: model={}, historySize={}, systemPromptLen={}",
+                model, history.size(), systemPrompt.length());
         try {
             byte[] body = buildBody(systemPrompt, history, userMessage, true);
 
@@ -57,9 +62,12 @@ public class OllamaService {
             HttpResponse<java.io.InputStream> resp = httpClient.send(
                     req, HttpResponse.BodyHandlers.ofInputStream());
 
+            log.debug("[OLLAMA] HTTP 응답: status={}", resp.statusCode());
+
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(resp.body()))) {
                 StringBuilder fullResponse = new StringBuilder();
+                int tokenCount = 0;
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (line.isBlank()) continue;
@@ -68,11 +76,20 @@ public class OllamaService {
                     String  token  = node.path("message").path("content").asText("");
                     if (!token.isEmpty()) {
                         fullResponse.append(token);
+                        tokenCount++;
                         emitter.send(SseEmitter.event()
                                 .name("token")
                                 .data(objectMapper.writeValueAsString(token)));
                     }
                     if (done) {
+                        long duration = System.currentTimeMillis() - start;
+                        if (duration > SLOW_THRESHOLD_MS) {
+                            log.warn("[OLLAMA] 응답 지연: duration={}ms, tokens={}, model={}",
+                                    duration, tokenCount, model);
+                        } else {
+                            log.info("[OLLAMA] streamChat 완료: duration={}ms, tokens={}, responseLen={}",
+                                    duration, tokenCount, fullResponse.length());
+                        }
                         emitter.send(SseEmitter.event()
                                 .name("done")
                                 .data(objectMapper.writeValueAsString(fullResponse.toString())));
@@ -84,7 +101,9 @@ public class OllamaService {
             emitter.complete();
 
         } catch (Exception e) {
-            log.error("[Ollama] streamChat 오류: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - start;
+            log.error("[OLLAMA] streamChat 오류: duration={}ms, model={}, error={}",
+                    duration, model, e.getMessage(), e);
             try {
                 emitter.send(SseEmitter.event()
                         .name("error")
@@ -100,6 +119,8 @@ public class OllamaService {
      */
     public void streamChatWithCallback(String systemPrompt, List<Message> history,
                                        String userMessage, java.util.function.Consumer<String> tokenConsumer) {
+        long start = System.currentTimeMillis();
+        log.debug("[OLLAMA] streamChatWithCallback 시작: historySize={}", history.size());
         try {
             byte[] body = buildBody(systemPrompt, history, userMessage, true);
 
@@ -113,6 +134,7 @@ public class OllamaService {
             HttpResponse<java.io.InputStream> resp = httpClient.send(
                     req, HttpResponse.BodyHandlers.ofInputStream());
 
+            int tokenCount = 0;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resp.body()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -120,17 +142,32 @@ public class OllamaService {
                     JsonNode node = objectMapper.readTree(line);
                     boolean done  = node.path("done").asBoolean(false);
                     String token  = node.path("message").path("content").asText("");
-                    if (!token.isEmpty()) tokenConsumer.accept(token);
-                    if (done) return;
+                    if (!token.isEmpty()) {
+                        tokenConsumer.accept(token);
+                        tokenCount++;
+                    }
+                    if (done) {
+                        long duration = System.currentTimeMillis() - start;
+                        if (duration > SLOW_THRESHOLD_MS) {
+                            log.warn("[OLLAMA] 응답 지연 (callback): duration={}ms, tokens={}", duration, tokenCount);
+                        } else {
+                            log.debug("[OLLAMA] streamChatWithCallback 완료: duration={}ms, tokens={}", duration, tokenCount);
+                        }
+                        return;
+                    }
                 }
             }
         } catch (Exception e) {
-            log.error("[Ollama] streamChatWithCallback 오류: {}", e.getMessage(), e);
-            throw new com.soulpal.exception.BusinessException(com.soulpal.exception.ErrorCode.AI_SERVICE_ERROR);
+            long duration = System.currentTimeMillis() - start;
+            log.error("[OLLAMA] streamChatWithCallback 오류: duration={}ms, error={}",
+                    duration, e.getMessage(), e);
+            throw new BusinessException(ErrorCode.AI_SERVICE_ERROR);
         }
     }
 
     public String chat(String systemPrompt, List<Message> history, String userMessage) {
+        long start = System.currentTimeMillis();
+        log.info("[OLLAMA] chat 시작: model={}, historySize={}", model, history.size());
         try {
             byte[] body = buildBody(systemPrompt, history, userMessage, false);
 
@@ -143,10 +180,20 @@ public class OllamaService {
 
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             JsonNode node = objectMapper.readTree(resp.body());
-            return node.path("message").path("content").asText("");
+            String response = node.path("message").path("content").asText("");
+
+            long duration = System.currentTimeMillis() - start;
+            if (duration > SLOW_THRESHOLD_MS) {
+                log.warn("[OLLAMA] 응답 지연: duration={}ms, responseLen={}", duration, response.length());
+            } else {
+                log.info("[OLLAMA] chat 완료: duration={}ms, responseLen={}", duration, response.length());
+            }
+            return response;
 
         } catch (Exception e) {
-            log.error("[Ollama] chat 오류: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - start;
+            log.error("[OLLAMA] chat 오류: duration={}ms, model={}, error={}",
+                    duration, model, e.getMessage(), e);
             throw new BusinessException(ErrorCode.AI_SERVICE_ERROR);
         }
     }

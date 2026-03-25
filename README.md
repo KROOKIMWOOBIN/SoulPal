@@ -2,21 +2,47 @@
 
 AI 캐릭터와 대화하는 웹 애플리케이션.
 
+> **AI 자율 개발 프로젝트입니다.**
+> 이 프로젝트는 Claude(AI)가 인간의 개입 없이 스스로 개발할 수 있도록 설계되었습니다.
+> AI 개발 컨텍스트 문서 → **[CLAUDE.md](CLAUDE.md)**
+
 ---
 
-## 변경 이력
+## AI 활용 방식
 
-| 날짜 | 내용 | 핵심 포인트 |
-|------|------|-------------|
-| 2026-03-25 (화) | **보안·성능·아키텍처 전면 고도화** | JWT Secret 강제 검증 / 비밀번호 8자 이상 / H2 콘솔 dev 전용 / Redis Rate Limit / 페이지네이션 / ExecutorService Bean 분리 / Spring Actuator / .env 시크릿 분리 / 프론트 API 모듈화 / Vitest 테스트 / 404 페이지 / SSE 401 자동 리프레시 |
-| 2026-03-24 (월) | **그룹 대화방 기능** | 여러 캐릭터를 한 방에 초대해 그룹 채팅, 각 캐릭터가 순서대로 SSE 스트리밍 응답, char-start/token/char-done 이벤트 프로토콜, 캐릭터들이 서로의 발언을 컨텍스트로 참고, HomeView 그룹 탭 추가, Flyway V3 마이그레이션 |
-| 2026-03-24 (월) | **캐릭터 생성 복수선택 + 직접입력 커스텀** | 성격·말투·분위기·관심사 복수선택, 모든 단계 "직접 입력" 옵션 추가, custom: 프리픽스 방식으로 Ollama 프롬프트 자동 주입, Flyway V2 마이그레이션 (ElementCollection 테이블 분리) |
-| 2026-03-24 (월) | **단위 테스트 전면 작성 + Ollama 로그 제한 + Router lazy loading** | AuthService·CharacterService·RateLimitService·ContextBuilderService·GlobalExceptionHandler 테스트 (JUnit5+Mockito) / Ollama 컨테이너 json-file 로그 드라이버 10MB×3파일 제한 / Vue Router 전 뷰 lazy import 전환 (초기 번들 감소) |
-| 2026-03-24 (월) | **CTO 관점 백엔드 고도화** | GlobalExceptionHandler + ErrorCode Enum / Bucket4j Rate Limit / ThreadPoolExecutor bounded / Java11 HttpClient 커넥션 풀 / Caffeine @Cacheable / Flyway 마이그레이션 / Swagger springdoc / verifyOwnership 소유권 검증 / deleteAccount 회원탈퇴 |
-| 2026-03-24 (월) | **전면 UI/UX 리디자인** | 그라디언트 디자인 시스템, 글래스모피즘 카드, 캐릭터별 컬러 아바타, 채팅 뒤로가기 프로젝트 복귀 수정, 메시지 입/출력 애니메이션, 생성 플로우 단계 인디케이터 개선 |
-| 2026-03-24 (월) | **DB 기반 개인화 Ollama 응답 알고리즘** | ContextBuilderService: 키워드 빈도 추출 / 감정 톤 감지 / 관련성 기반 히스토리 선택 |
-| 2026-03-24 (월) | **DB 인덱스 / 웹 RAG / Redis JWT** | 복합 인덱스, DuckDuckGo 크롤링 RAG, 액세스+리프레시 토큰 이중화 |
-| 2026-03-24 (월) | **프로젝트 구조 웹 전용 재편** | Flutter 제거, Spring Boot(Tomcat :9090) + Vue(Nginx :8080) Docker 분리 구성 |
+이 프로젝트는 **Claude (Sonnet 4.6)** 를 단순 코드 생성 도구가 아닌 **자율 개발자**로 활용합니다.
+
+### 핵심 철학: 인간은 방향을 정하고, AI가 실행한다
+
+```
+사람: "그룹 채팅 기능 만들어줘"
+ AI: 설계 → 구현 → 테스트 → 디버깅 → 문서화 (자율 수행)
+```
+
+사람이 결과를 확인하거나 에러를 직접 분석할 필요 없이, AI가 스스로 로그를 읽고, 테스트를 돌리고, 버그를 수정합니다.
+
+### 이를 가능하게 하는 인프라
+
+| 레이어 | 도구 | 역할 |
+|--------|------|------|
+| **컨텍스트** | [CLAUDE.md](CLAUDE.md) | ADR·버그기록·금지사항·에러코드·API목록 — AI의 장기 기억 |
+| **진단** | `make doctor` | 환경 상태를 한 번에 출력 → AI에게 붙여넣으면 즉시 파악 |
+| **아키텍처 보호** | ArchUnit | Controller→Repository 직접 호출 등 레이어 위반을 테스트로 강제 차단 |
+| **통합 검증** | TestContainers | 실제 PostgreSQL + Redis 컨테이너로 인증·마이그레이션 플로우 검증 |
+| **코드 품질** | ESLint + ArchUnit | AI가 작성한 코드를 자동 검증, 사람 리뷰 의존도 감소 |
+| **CI/CD** | GitHub Actions | push마다 단위·통합·프론트 테스트 + Docker 빌드 자동 실행 |
+| **구조화 로그** | Logstash JSON + MDC | `requestId`·`userId` 포함 — AI가 로그만으로 버그 원인 추적 가능 |
+
+### AI가 혼자 해결한 문제들
+
+모두 사람이 "이런 에러 났어" 라고 붙여넣으면 AI가 로그 분석부터 수정·검증까지 완료한 케이스입니다.
+
+- **Auth 401 Deadlock** — `/api/auth/refresh` 자체가 401 반환 시 axios 인터셉터가 무한 대기에 빠지는 문제. 로그 패턴으로 원인 파악 → axios 인터셉터 조건 수정
+- **JWT Secret 불일치** — 로컬(`bootRun`) ↔ Docker 환경 전환 시 기존 토큰 전부 무효화. `StartupValidator`로 재발 방지
+- **MDC 컨텍스트 소실** — SSE executor 스레드에서 `requestId`/`userId`가 로그에서 사라지는 문제. MDC 캡처·복원 패턴 적용
+- **라우터 가드 만료 토큰 허용** — 만료된 토큰이 있어도 보호 페이지 진입 허용. JWT `exp` claim 클라이언트 사전 검증으로 해결
+
+---
 
 ## 아키텍처
 
@@ -103,20 +129,27 @@ docker compose down
 
 **백엔드** (IntelliJ 기준):
 ```bash
-cd backend/
-./gradlew bootRun
+make dev-backend   # 또는: cd backend && ./gradlew bootRun -x buildFrontend ...
 ```
 - Java 21 toolchain 자동 설정
 - H2 파일 DB 사용 (기본값, PostgreSQL 없이 동작)
-- `spring.h2.console.enabled=true` 시 H2 콘솔 활성화 (`/h2-console`)
 - Ollama는 `localhost:11434` 연결
 
 **프론트엔드** (별도 dev 서버):
 ```bash
-cd frontend/
-npm install
-npm run dev    # http://localhost:5173 (API → backend:9090 프록시)
-npm run test   # Vitest 단위 테스트 실행
+make dev-frontend  # 또는: cd frontend && npm install && npm run dev
+# http://localhost:5173 (API → backend:9090 프록시)
+```
+
+### 개발 명령어 (Makefile)
+
+```bash
+make test-unit        # 백엔드 단위 + 아키텍처 테스트 (빠름, Docker 불필요)
+make test-integration # 백엔드 통합 테스트 (TestContainers: PostgreSQL + Redis 자동 실행)
+make test-frontend    # 프론트엔드 Vitest
+make check            # lint + test-unit + test-frontend (PR 전 필수)
+make doctor           # 환경 진단 — 출력을 AI에게 붙여넣으면 상태 즉시 파악
+make docker-rebuild   # 이미지 재빌드 후 재시작
 ```
 
 ## 기술 스택
@@ -128,8 +161,9 @@ npm run test   # Vitest 단위 테스트 실행
 | **Cache / 보안** | Redis 7 — JWT 블랙리스트, 리프레시 토큰, Redis 기반 Rate Limit |
 | **AI** | Ollama llama3 — SSE 스트리밍 + 개인화 컨텍스트 주입 |
 | **RAG** | DuckDuckGo HTML 검색 + JSoup 크롤링 — 실시간 웹 지식 주입 |
-| **Frontend** | Vue 3, Pinia, Vue Router 4, Vite, Vitest |
-| **Infra** | Docker Compose, Nginx (리버스 프록시 + SSE), Gradle 8.7 |
+| **Frontend** | Vue 3, Pinia, Vue Router 4, Vite, Vitest, ESLint |
+| **Infra** | Docker Compose, Nginx (리버스 프록시 + SSE), Gradle 8.7, GitHub Actions |
+| **AI 개발 인프라** | ArchUnit, TestContainers, Logstash JSON 로깅, MDC 추적, CLAUDE.md |
 
 ## 주요 기능
 

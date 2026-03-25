@@ -3,8 +3,8 @@ package com.soulpal.service;
 import com.soulpal.model.Message;
 import com.soulpal.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
  * - 사용자 발화 패턴(빈도 키워드, 감정 톤, 대화 깊이)을 분석해 시스템 프롬프트에 주입
  * - 현재 메시지와의 키워드 유사도를 기반으로 관련성 높은 이전 대화를 선별
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContextBuilderService {
@@ -51,7 +52,10 @@ public class ContextBuilderService {
     @Cacheable(value = "userContext", key = "#characterId")
     public String buildUserContext(String characterId) {
         long totalMessages = messageRepository.countByCharacterId(characterId);
-        if (totalMessages < 4) return "";
+        if (totalMessages < 4) {
+            log.debug("[CONTEXT] 메시지 부족으로 컨텍스트 생략: characterId={}, count={}", characterId, totalMessages);
+            return "";
+        }
 
         List<Message> sample = messageRepository.findByCharacterIdOrderByCreatedAtDesc(
                 characterId, PageRequest.of(0, 120));
@@ -65,6 +69,11 @@ public class ContextBuilderService {
         List<String> topKeywords = extractTopKeywords(userMessages, 6);
         String emotionalContext = detectEmotionalTone(userMessages);
         String depthContext = buildDepthContext(totalMessages);
+
+        log.info("[CONTEXT] 개인화 컨텍스트 생성: characterId={}, totalMsgs={}, keywords={}, emotion={}",
+                characterId, totalMessages,
+                topKeywords.isEmpty() ? "없음" : String.join(",", topKeywords),
+                emotionalContext.isEmpty() ? "neutral" : emotionalContext.split("—")[0].trim());
 
         StringBuilder sb = new StringBuilder("\n\n[사용자 분석 — 이 정보를 반드시 대화에 반영해줘]");
         sb.append("\n- ").append(depthContext);
@@ -96,10 +105,16 @@ public class ContextBuilderService {
         Collections.reverse(recent);
 
         long total = messageRepository.countByCharacterId(characterId);
-        if (total <= recentCount || extraCount <= 0) return recent;
+        if (total <= recentCount || extraCount <= 0) {
+            log.debug("[CONTEXT] 히스토리: characterId={}, count={} (recent only)", characterId, recent.size());
+            return recent;
+        }
 
         Set<String> currentKeywords = extractKeywords(currentMsg);
-        if (currentKeywords.isEmpty()) return recent;
+        if (currentKeywords.isEmpty()) {
+            log.debug("[CONTEXT] 히스토리: characterId={}, count={} (no keywords)", characterId, recent.size());
+            return recent;
+        }
 
         // 더 오래된 메시지 풀을 가져와 관련성 점수 계산
         List<Message> pool = messageRepository.findByCharacterIdOrderByCreatedAtDesc(
@@ -117,13 +132,19 @@ public class ContextBuilderService {
                 .limit(extraCount)
                 .collect(Collectors.toList());
 
-        if (scoredUserMsgs.isEmpty()) return recent;
+        if (scoredUserMsgs.isEmpty()) {
+            log.debug("[CONTEXT] 히스토리: characterId={}, count={} (no relevant extras)", characterId, recent.size());
+            return recent;
+        }
 
         // 관련 user 메시지를 시간순으로 정렬 후 앞에 추가
         scoredUserMsgs.sort(Comparator.comparing(Message::getCreatedAt));
 
         List<Message> combined = new ArrayList<>(scoredUserMsgs);
         combined.addAll(recent);
+
+        log.debug("[CONTEXT] 히스토리: characterId={}, total={}, recent={}, extra={}",
+                characterId, combined.size(), recent.size(), scoredUserMsgs.size());
         return combined;
     }
 

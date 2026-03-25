@@ -30,12 +30,14 @@ public class GlobalExceptionHandler {
     // ── ErrorCode 기반 비즈니스 예외 ───────────────────────────────────────────
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Map<String, Object>> handleBusiness(BusinessException e) {
+        log.warn("[BIZ] {} {}", e.getErrorCode().getCode(), e.getMessage());
         return build(e.getErrorCode(), e.getMessage());
     }
 
     // ── 레거시: IllegalArgumentException → INVALID_INPUT ────────────────────
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArg(IllegalArgumentException e) {
+        log.warn("[BIZ] C001 {}", e.getMessage());
         return build(ErrorCode.INVALID_INPUT, e.getMessage());
     }
 

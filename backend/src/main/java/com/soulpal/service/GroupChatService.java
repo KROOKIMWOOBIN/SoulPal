@@ -52,7 +52,10 @@ public class GroupChatService {
                 .characterIds(characterIds)
                 .createdAt(LocalDateTime.now())
                 .build();
-        return groupRoomRepository.save(room);
+        groupRoomRepository.save(room);
+        log.info("[GROUP] 방 생성: id={}, name={}, userId={}, characters={}",
+                room.getId(), name, userId, characterIds.size());
+        return room;
     }
 
     public List<GroupRoom> getRooms(String userId, String projectId) {
@@ -96,8 +99,11 @@ public class GroupChatService {
      *   event: done        data: {}
      */
     public void streamGroupChat(String roomId, String userId, String userMessage, SseEmitter emitter) {
+        long streamStart = System.currentTimeMillis();
         try {
             GroupRoom room = getRoom(roomId, userId);
+            log.info("[GROUP] 스트림 시작: roomId={}, characters={}, msgLen={}",
+                    roomId, room.getCharacterIds().size(), userMessage.length());
 
             // 1. 사용자 메시지 저장
             GroupMessage userMsg = saveMessage(roomId, userMessage, null, "나");
@@ -141,6 +147,7 @@ public class GroupChatService {
                 List<Message> ollamaHistory = toOllamaHistory(currentContext, character.getId());
 
                 // 스트리밍 응답
+                long charStart = System.currentTimeMillis();
                 StringBuilder fullResponse = new StringBuilder();
                 ollamaService.streamChatWithCallback(
                         systemPrompt, ollamaHistory, lastUserMessage,
@@ -158,6 +165,9 @@ public class GroupChatService {
 
                 String aiResponse = fullResponse.toString().trim();
                 if (aiResponse.isBlank()) aiResponse = "...";
+                log.info("[GROUP] 캐릭터 응답 완료: characterId={}, name={}, duration={}ms, responseLen={}",
+                        character.getId(), character.getName(),
+                        System.currentTimeMillis() - charStart, aiResponse.length());
 
                 // AI 응답 저장
                 GroupMessage aiMsg = saveMessage(roomId, aiResponse, character.getId(), character.getName());
@@ -176,11 +186,14 @@ public class GroupChatService {
             // 방의 마지막 메시지 업데이트
             updateRoomLastMessage(room, userMessage);
 
+            log.info("[GROUP] 스트림 완료: roomId={}, totalDuration={}ms",
+                    roomId, System.currentTimeMillis() - streamStart);
             emitter.send(SseEmitter.event().name("done").data("{}"));
             emitter.complete();
 
         } catch (Exception e) {
-            log.error("[GroupChat] 오류: {}", e.getMessage(), e);
+            log.error("[GROUP] 스트림 오류: roomId={}, duration={}ms, error={}",
+                    roomId, System.currentTimeMillis() - streamStart, e.getMessage(), e);
             try {
                 emitter.send(SseEmitter.event().name("error")
                         .data("{\"error\": \"응답 생성에 실패했습니다.\"}"));

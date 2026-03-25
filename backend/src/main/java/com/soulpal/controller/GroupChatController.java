@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Tag(name = "GroupChat", description = "그룹 대화 API")
@@ -85,8 +87,16 @@ public class GroupChatController {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 그룹 채팅은 5분 타임아웃
 
-        executor.execute(() ->
-                groupChatService.streamGroupChat(req.getRoomId(), userId, req.getMessage(), emitter));
+        // MDC 컨텍스트를 executor 스레드로 전파
+        Map<String, String> mdcCtx = MDC.getCopyOfContextMap();
+        executor.execute(() -> {
+            if (mdcCtx != null) MDC.setContextMap(mdcCtx);
+            try {
+                groupChatService.streamGroupChat(req.getRoomId(), userId, req.getMessage(), emitter);
+            } finally {
+                MDC.clear();
+            }
+        });
 
         return emitter;
     }

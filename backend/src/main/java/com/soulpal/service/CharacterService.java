@@ -7,6 +7,7 @@ import com.soulpal.model.Character;
 import com.soulpal.repository.CharacterRepository;
 import com.soulpal.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +20,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CharacterService {
@@ -43,13 +45,19 @@ public class CharacterService {
     public Character getById(String id) {
         String userId = currentUserId();
         return characterRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> {
+                    log.warn("[CHARACTER] 조회 실패 - 없거나 권한 없음: id={}, userId={}", id, userId);
+                    return new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + id);
+                });
     }
 
     /** characterId가 userId 소유인지 검증. 불일치 시 ResourceNotFoundException. */
     public void verifyOwnership(String characterId, String userId) {
         characterRepository.findByIdAndUserId(characterId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + characterId));
+                .orElseThrow(() -> {
+                    log.warn("[CHARACTER] 소유권 검증 실패: id={}, userId={}", characterId, userId);
+                    return new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + characterId);
+                });
     }
 
     @Transactional
@@ -67,7 +75,10 @@ public class CharacterService {
                 .appearanceIds(req.getAppearanceIds())
                 .createdAt(LocalDateTime.now())
                 .build();
-        return characterRepository.save(character);
+        characterRepository.save(character);
+        log.info("[CHARACTER] 생성: id={}, name={}, userId={}, projectId={}",
+                character.getId(), character.getName(), userId, req.getProjectId());
+        return character;
     }
 
     @Transactional
@@ -79,7 +90,9 @@ public class CharacterService {
         character.setSpeechStyleIds(req.getSpeechStyleIds());
         character.setInterestIds(req.getInterestIds());
         character.setAppearanceIds(req.getAppearanceIds());
-        return characterRepository.save(character);
+        characterRepository.save(character);
+        log.info("[CHARACTER] 수정: id={}, name={}", id, req.getName());
+        return character;
     }
 
     @Transactional
@@ -87,13 +100,16 @@ public class CharacterService {
         Character character = getById(id);
         messageRepository.deleteByCharacterId(id);
         characterRepository.delete(character);
+        log.info("[CHARACTER] 삭제: id={}, name={}", id, character.getName());
     }
 
     @Transactional
     public Character toggleFavorite(String id) {
         Character character = getById(id);
         character.setFavorite(!character.isFavorite());
-        return characterRepository.save(character);
+        characterRepository.save(character);
+        log.debug("[CHARACTER] 즐겨찾기 토글: id={}, favorite={}", id, character.isFavorite());
+        return character;
     }
 
     @Transactional

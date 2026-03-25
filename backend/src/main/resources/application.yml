@@ -70,10 +70,18 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,loggers,env,threaddump,heapdump
+      base-path: /actuator
   endpoint:
     health:
-      show-details: never
+      show-details: when-authorized   # prod에서 인증된 사용자만 상세 표시
+    loggers:
+      enabled: true                   # 런타임 로그 레벨 변경 가능 (POST /actuator/loggers/com.soulpal)
+  info:
+    env:
+      enabled: true
+    git:
+      enabled: false
 
 springdoc:
   api-docs:

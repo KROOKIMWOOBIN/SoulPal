@@ -11,6 +11,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.slf4j.MDC;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
                     auth.setDetails(username);
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    MDC.put("userId", userId);
                 }
             }
         }

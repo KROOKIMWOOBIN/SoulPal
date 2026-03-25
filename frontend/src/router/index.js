@@ -23,10 +23,25 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _from, next) => {
-  const isLoggedIn = !!localStorage.getItem('soulpal_token')
+function isTokenValid(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp * 1000 > Date.now()
+  } catch {
+    return false
+  }
+}
 
-  if (to.meta.auth && !isLoggedIn) return next('/login')
+router.beforeEach((to, _from, next) => {
+  const token = localStorage.getItem('soulpal_token')
+  const isLoggedIn = token && isTokenValid(token)
+
+  if (to.meta.auth && !isLoggedIn) {
+    localStorage.removeItem('soulpal_token')
+    localStorage.removeItem('soulpal_refresh')
+    localStorage.removeItem('soulpal_user')
+    return next('/login')
+  }
   if (to.meta.guest && isLoggedIn) return next('/')
   next()
 })
