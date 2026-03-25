@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -87,14 +89,17 @@ public class GroupChatController {
 
         SseEmitter emitter = new SseEmitter(300_000L); // 그룹 채팅은 5분 타임아웃
 
-        // MDC 컨텍스트를 executor 스레드로 전파
+        // MDC + SecurityContext를 executor 스레드로 전파
         Map<String, String> mdcCtx = MDC.getCopyOfContextMap();
+        SecurityContext securityContext = SecurityContextHolder.getContext();
         executor.execute(() -> {
             if (mdcCtx != null) MDC.setContextMap(mdcCtx);
+            SecurityContextHolder.setContext(securityContext);
             try {
                 groupChatService.streamGroupChat(req.getRoomId(), userId, req.getMessage(), emitter);
             } finally {
                 MDC.clear();
+                SecurityContextHolder.clearContext();
             }
         });
 

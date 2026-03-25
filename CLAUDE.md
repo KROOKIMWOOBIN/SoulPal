@@ -146,6 +146,27 @@ executor.execute(() -> {
 });
 ```
 
+### BUG-005: SSE executor 스레드에서 SecurityContext 소실 → NullPointerException
+- **증상:** `POST /api/chat/stream` 요청 시 `[CHAT] 스트림 오류: ... SecurityContext.getAuthentication() is null` (로그에 200 반환이지만 실제론 에러)
+- **원인:** `SecurityContextHolder`는 ThreadLocal 기반. `executor.execute()` 내부의 새 스레드에서는 SecurityContext가 없음. `CharacterService.getById()` → `currentUserId()` → `SecurityContextHolder.getContext().getAuthentication().getPrincipal()` → NPE
+- **해결:** MDC와 동일하게 executor 실행 전에 SecurityContext를 캡처하고 스레드 내에서 복원, finally에서 clear
+
+```java
+// ChatController.java, GroupChatController.java
+SecurityContext securityContext = SecurityContextHolder.getContext();
+executor.execute(() -> {
+    SecurityContextHolder.setContext(securityContext);
+    try {
+        // ... 스트리밍 로직
+    } finally {
+        MDC.clear();
+        SecurityContextHolder.clearContext();
+    }
+});
+```
+
+- **주의:** MDC와 SecurityContext는 항상 세트로 전파해야 함. 둘 중 하나만 전파하면 안 됨
+
 ### BUG-004: 라우터 가드가 만료된 토큰을 유효로 판단
 - **증상:** 만료된 access token이 localStorage에 있어도 보호된 페이지 진입 허용 → API 호출 후 401
 - **원인:** `router.beforeEach`가 토큰 **존재 여부**만 체크, 만료 여부 미확인
@@ -363,6 +384,7 @@ docker logs soulpal-backend 2>&1 | grep '\[RATE_LIMIT\]'
 | `ContextBuilderService` 캐시 제거 | DB 쿼리 부하 폭증 (매 채팅마다 120개 메시지 분석) |
 | `docker compose down -v` | 볼륨 삭제로 DB, Redis, Ollama 모델 데이터 전체 손실 |
 | 로컬(`./gradlew bootRun`)과 Docker를 혼용해서 사용 | BUG-002 재발 — JWT secret 불일치 |
+| `executor.execute()` 내부에서 SecurityContext 복원 코드 생략 | BUG-005 재발 — CharacterService.currentUserId() NPE, 모든 SSE 채팅 실패 |
 | ArchUnit 테스트 실패를 무시하고 코드 통합 | 레이어 위반 누적 — Controller가 Repository를 직접 호출하게 됨 |
 | `make check` 없이 PR 생성 | lint + 단위 테스트 미검증 상태로 코드 통합 |
 

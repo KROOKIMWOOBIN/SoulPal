@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -75,11 +77,13 @@ public class ChatController {
 
         SseEmitter emitter = new SseEmitter(180_000L);
 
-        // MDC 컨텍스트를 executor 스레드로 전파 (requestId, userId 유지)
+        // MDC + SecurityContext를 executor 스레드로 전파
         Map<String, String> mdcCtx = MDC.getCopyOfContextMap();
+        SecurityContext securityContext = SecurityContextHolder.getContext();
 
         executor.execute(() -> {
             if (mdcCtx != null) MDC.setContextMap(mdcCtx);
+            SecurityContextHolder.setContext(securityContext);
             long start = System.currentTimeMillis();
             try {
                 Character character = characterService.getById(req.getCharacterId());
@@ -125,6 +129,7 @@ public class ChatController {
                 emitter.completeWithError(e);
             } finally {
                 MDC.clear();
+                SecurityContextHolder.clearContext();
             }
         });
 
