@@ -86,7 +86,7 @@ public class ChatController {
             SecurityContextHolder.setContext(securityContext);
             long start = System.currentTimeMillis();
             try {
-                Character character = characterService.getById(req.getCharacterId());
+                Character character = characterService.getById(req.getCharacterId(), userId);
                 log.info("[CHAT] 스트림 시작: characterId={}, characterName={}, msgLen={}",
                         req.getCharacterId(), character.getName(), req.getMessage().length());
 
@@ -143,7 +143,7 @@ public class ChatController {
         rateLimitService.checkChat(userId);
 
         long start = System.currentTimeMillis();
-        Character character = characterService.getById(req.getCharacterId());
+        Character character = characterService.getById(req.getCharacterId(), userId);
         log.info("[CHAT] 동기 전송: characterId={}, characterName={}, msgLen={}",
                 req.getCharacterId(), character.getName(), req.getMessage().length());
 
@@ -165,7 +165,7 @@ public class ChatController {
 
         String aiResponse = ollamaService.chat(systemPrompt, history, req.getMessage());
         Message aiMessage = messageService.save(req.getCharacterId(), aiResponse, false);
-        characterService.updateLastMessage(req.getCharacterId(), aiResponse);
+        characterService.updateLastMessage(req.getCharacterId(), userId, aiResponse);
 
         log.info("[CHAT] 동기 완료: characterId={}, responseLen={}, duration={}ms",
                 req.getCharacterId(), aiResponse.length(), System.currentTimeMillis() - start);

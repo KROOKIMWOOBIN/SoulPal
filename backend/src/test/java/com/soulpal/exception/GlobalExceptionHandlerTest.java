@@ -1,15 +1,13 @@
 package com.soulpal.exception;
 
-import com.soulpal.config.JwtUtil;
-import com.soulpal.service.TokenService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+
+import java.util.concurrent.RejectedExecutionException;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,17 +17,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * GlobalExceptionHandler 슬라이스 테스트.
- * 각 예외 타입별로 올바른 HTTP 상태코드와 응답 코드를 검증합니다.
+ * standaloneSetup을 사용해 Spring Security 없이 예외 핸들러만 격리 테스트합니다.
  */
-@WebMvcTest(GlobalExceptionHandlerTest.TestController.class)
-@Import(GlobalExceptionHandler.class)
 @DisplayName("GlobalExceptionHandler 테스트")
 class GlobalExceptionHandlerTest {
 
-    @Autowired MockMvc mockMvc;
-
-    @MockBean JwtUtil      jwtUtil;
-    @MockBean TokenService tokenService;
+    private MockMvc mockMvc;
 
     /** 예외를 유발하는 테스트용 컨트롤러 */
     @RestController
@@ -41,9 +34,9 @@ class GlobalExceptionHandlerTest {
             throw new BusinessException(ErrorCode.AI_SERVICE_ERROR);
         }
 
-        @GetMapping("/illegal")
-        void illegal() {
-            throw new IllegalArgumentException("잘못된 값");
+        @GetMapping("/rejected")
+        void rejected() {
+            throw new RejectedExecutionException("스레드 풀 포화");
         }
 
         @GetMapping("/notfound")
@@ -57,9 +50,17 @@ class GlobalExceptionHandlerTest {
         }
 
         @GetMapping("/generic")
-        void generic() throws Exception {
+        void generic() {
             throw new RuntimeException("알 수 없는 오류");
         }
+    }
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(new TestController())
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
     @Test
@@ -71,12 +72,11 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("IllegalArgumentException → C001, 400")
-    void illegalArgumentException() throws Exception {
-        mockMvc.perform(get("/test/illegal").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("C001"))
-                .andExpect(jsonPath("$.message").value("잘못된 값"));
+    @DisplayName("RejectedExecutionException → R002, 503")
+    void rejectedExecutionException() throws Exception {
+        mockMvc.perform(get("/test/rejected").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("R002"));
     }
 
     @Test
@@ -106,7 +106,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("응답에 timestamp 필드 포함")
     void responseHasTimestamp() throws Exception {
-        mockMvc.perform(get("/test/illegal").accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/test/notfound").accept(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 }

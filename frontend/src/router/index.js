@@ -33,13 +33,13 @@ function isTokenValid(token) {
 }
 
 router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('soulpal_token')
+  const token = sessionStorage.getItem('soulpal_token')
   const isLoggedIn = token && isTokenValid(token)
 
   if (to.meta.auth && !isLoggedIn) {
-    localStorage.removeItem('soulpal_token')
-    localStorage.removeItem('soulpal_refresh')
-    localStorage.removeItem('soulpal_user')
+    sessionStorage.removeItem('soulpal_token')
+    sessionStorage.removeItem('soulpal_refresh')
+    sessionStorage.removeItem('soulpal_user')
     return next('/login')
   }
   if (to.meta.guest && isLoggedIn) return next('/')

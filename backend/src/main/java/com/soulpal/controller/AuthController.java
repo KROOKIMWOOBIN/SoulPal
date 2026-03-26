@@ -5,9 +5,11 @@ import com.soulpal.dto.LoginRequest;
 import com.soulpal.dto.RegisterRequest;
 import com.soulpal.model.User;
 import com.soulpal.service.AuthService;
+import com.soulpal.service.RateLimitService;
 import com.soulpal.service.TokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,16 +26,28 @@ public class AuthController {
 
     private final AuthService authService;
     private final TokenService tokenService;
+    private final RateLimitService rateLimitService;
 
     @Operation(summary = "회원가입")
     @PostMapping("/register")
-    public AuthResponse register(@Valid @RequestBody RegisterRequest req) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest req, HttpServletRequest httpReq) {
+        rateLimitService.checkAuth(resolveClientIp(httpReq));
         return authService.register(req);
     }
 
+    @Operation(summary = "로그인")
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
+        rateLimitService.checkAuth(resolveClientIp(httpReq));
         return authService.login(req);
+    }
+
+    private String resolveClientIp(HttpServletRequest req) {
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return req.getRemoteAddr();
     }
 
     @GetMapping("/me")
@@ -47,15 +61,15 @@ public class AuthController {
         );
     }
 
-    /** 액세스 토큰 재발급 */
+    /** 액세스 + 리프레시 토큰 재발급 (Rotation) */
     @PostMapping("/refresh")
     public Map<String, String> refresh(@RequestBody Map<String, String> body) {
         String refreshToken = body.get("refreshToken");
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new IllegalArgumentException("refreshToken이 필요합니다.");
+            throw new com.soulpal.exception.BusinessException(
+                    com.soulpal.exception.ErrorCode.REFRESH_TOKEN_INVALID);
         }
-        String newAccessToken = tokenService.refresh(refreshToken);
-        return Map.of("accessToken", newAccessToken);
+        return tokenService.refresh(refreshToken);
     }
 
     @Operation(summary = "로그아웃 (토큰 무효화)")

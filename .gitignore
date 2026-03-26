@@ -8,6 +8,9 @@ backend/gradle/wrapper/gradle-wrapper.jar
 frontend/node_modules/
 frontend/dist/
 
+# 프론트엔드 빌드 결과물 (백엔드 내장용, make embed-frontend로 생성)
+backend/src/main/resources/static/
+
 # IDE
 .idea/
 .vscode/

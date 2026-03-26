@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -118,15 +119,14 @@ public class GroupChatService {
                 contextHistory = contextHistory.subList(contextHistory.size() - HISTORY_LIMIT, contextHistory.size());
             }
 
-            // 3. 각 캐릭터 순서대로 응답
+            // 3. 각 캐릭터 순서대로 응답 (배치 로딩으로 N+1 방지)
+            Map<String, Character> characterMap = characterService.getByIds(room.getCharacterIds());
             String lastUserMessage = userMessage;
             List<GroupMessage> currentContext = new ArrayList<>(contextHistory);
 
             for (String characterId : room.getCharacterIds()) {
-                Character character;
-                try {
-                    character = characterService.getById(characterId);
-                } catch (Exception e) {
+                Character character = characterMap.get(characterId);
+                if (character == null) {
                     log.warn("[GroupChat] 캐릭터 조회 실패: {}", characterId);
                     continue;
                 }
@@ -141,7 +141,7 @@ public class GroupChatService {
 
                 // 시스템 프롬프트 + 그룹 맥락 추가
                 String systemPrompt = characterService.buildSystemPrompt(character)
-                        + buildGroupContext(room, character, currentContext);
+                        + buildGroupContext(room, character, currentContext, characterMap);
 
                 // Message 변환 (OllamaService 호환)
                 List<Message> ollamaHistory = toOllamaHistory(currentContext, character.getId());
@@ -219,12 +219,13 @@ public class GroupChatService {
      * 그룹 대화 맥락을 시스템 프롬프트에 추가합니다.
      * 다른 캐릭터들의 존재와 이름을 알려줍니다.
      */
-    private String buildGroupContext(GroupRoom room, Character self, List<GroupMessage> history) {
+    private String buildGroupContext(GroupRoom room, Character self, List<GroupMessage> history,
+                                     Map<String, Character> characterMap) {
         List<String> otherNames = room.getCharacterIds().stream()
                 .filter(id -> !id.equals(self.getId()))
                 .map(id -> {
-                    try { return characterService.getById(id).getName(); }
-                    catch (Exception e) { return null; }
+                    Character c = characterMap.get(id);
+                    return c != null ? c.getName() : null;
                 })
                 .filter(name -> name != null)
                 .collect(Collectors.toList());

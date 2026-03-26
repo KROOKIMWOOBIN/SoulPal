@@ -114,10 +114,10 @@ class ContextBuilderServiceTest {
     @Test
     @DisplayName("최근 N개만 반환 (이전 메시지 없음)")
     void getRelevantHistory_onlyRecent() {
-        List<Message> recent = List.of(
+        List<Message> recent = new ArrayList<>(List.of(
                 buildMessage("최근 메시지", true),
                 buildMessage("AI 응답", false)
-        );
+        ));
         given(messageRepository.findByCharacterIdOrderByCreatedAtDesc(eq("char-1"), any(PageRequest.class)))
                 .willReturn(recent);
         given(messageRepository.countByCharacterId("char-1")).willReturn(2L);

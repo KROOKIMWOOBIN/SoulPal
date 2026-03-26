@@ -4,6 +4,7 @@ import com.soulpal.config.JwtUtil;
 import com.soulpal.dto.AuthResponse;
 import com.soulpal.dto.LoginRequest;
 import com.soulpal.dto.RegisterRequest;
+import com.soulpal.exception.BusinessException;
 import com.soulpal.model.User;
 import com.soulpal.repository.CharacterRepository;
 import com.soulpal.repository.MessageRepository;
@@ -36,6 +37,8 @@ class AuthServiceTest {
     @Mock CharacterRepository characterRepository;
     @Mock MessageRepository  messageRepository;
     @Mock ProjectRepository  projectRepository;
+    @Mock com.soulpal.repository.GroupRoomRepository groupRoomRepository;
+    @Mock com.soulpal.repository.GroupMessageRepository groupMessageRepository;
 
     @InjectMocks AuthService authService;
 
@@ -76,7 +79,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("이메일 중복 → IllegalArgumentException")
+    @DisplayName("이메일 중복 → BusinessException")
     void register_emailDuplicated() {
         RegisterRequest req = new RegisterRequest();
         req.setEmail("dup@example.com");
@@ -85,12 +88,11 @@ class AuthServiceTest {
         given(userRepository.existsByEmail("dup@example.com")).willReturn(true);
 
         assertThatThrownBy(() -> authService.register(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("이메일");
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("사용자명 중복 → IllegalArgumentException")
+    @DisplayName("사용자명 중복 → BusinessException")
     void register_usernameDuplicated() {
         RegisterRequest req = new RegisterRequest();
         req.setEmail("new@example.com");
@@ -100,8 +102,7 @@ class AuthServiceTest {
         given(userRepository.existsByUsername("dupuser")).willReturn(true);
 
         assertThatThrownBy(() -> authService.register(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("사용자명");
+                .isInstanceOf(BusinessException.class);
     }
 
     // ── 로그인 ─────────────────────────────────────────────────────────────────
@@ -124,7 +125,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("이메일 없음 → IllegalArgumentException")
+    @DisplayName("이메일 없음 → BusinessException")
     void login_emailNotFound() {
         LoginRequest req = new LoginRequest();
         req.setEmail("notfound@example.com");
@@ -133,11 +134,11 @@ class AuthServiceTest {
         given(userRepository.findByEmail(anyString())).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(req))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("비밀번호 불일치 → IllegalArgumentException")
+    @DisplayName("비밀번호 불일치 → BusinessException")
     void login_wrongPassword() {
         LoginRequest req = new LoginRequest();
         req.setEmail("test@example.com");
@@ -147,7 +148,7 @@ class AuthServiceTest {
         given(passwordEncoder.matches("wrong", "$encoded$")).willReturn(false);
 
         assertThatThrownBy(() -> authService.login(req))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     // ── 회원탈퇴 ───────────────────────────────────────────────────────────────

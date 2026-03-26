@@ -23,6 +23,10 @@ public class ContextBuilderService {
 
     private final MessageRepository messageRepository;
 
+    private static final int CONTEXT_SAMPLE_LIMIT = 120;
+    private static final int RELEVANCE_POOL_LIMIT  = 300;
+    private static final int MAX_KEYWORDS          = 6;
+
     // 분석에서 제외할 불용어 (한국어 + 영어)
     private static final Set<String> STOP_WORDS = Set.of(
             "이", "가", "을", "를", "은", "는", "의", "에", "에서", "로", "으로",
@@ -58,7 +62,7 @@ public class ContextBuilderService {
         }
 
         List<Message> sample = messageRepository.findByCharacterIdOrderByCreatedAtDesc(
-                characterId, PageRequest.of(0, 120));
+                characterId, PageRequest.of(0, CONTEXT_SAMPLE_LIMIT));
 
         List<Message> userMessages = sample.stream()
                 .filter(Message::isUser)
@@ -66,7 +70,7 @@ public class ContextBuilderService {
 
         if (userMessages.isEmpty()) return "";
 
-        List<String> topKeywords = extractTopKeywords(userMessages, 6);
+        List<String> topKeywords = extractTopKeywords(userMessages, MAX_KEYWORDS);
         String emotionalContext = detectEmotionalTone(userMessages);
         String depthContext = buildDepthContext(totalMessages);
 
@@ -118,7 +122,7 @@ public class ContextBuilderService {
 
         // 더 오래된 메시지 풀을 가져와 관련성 점수 계산
         List<Message> pool = messageRepository.findByCharacterIdOrderByCreatedAtDesc(
-                characterId, PageRequest.of(0, 300));
+                characterId, PageRequest.of(0, RELEVANCE_POOL_LIMIT));
 
         Set<String> recentIds = recent.stream().map(Message::getId).collect(Collectors.toSet());
 

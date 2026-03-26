@@ -10,6 +10,8 @@ import com.soulpal.repository.GroupRoomRepository;
 import com.soulpal.repository.MessageRepository;
 import com.soulpal.repository.ProjectRepository;
 import com.soulpal.repository.UserRepository;
+import com.soulpal.exception.BusinessException;
+import com.soulpal.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,14 +35,15 @@ public class AuthService {
     private final ProjectRepository projectRepository;
     private final GroupRoomRepository groupRoomRepository;
 
+    @Transactional
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
             log.warn("[AUTH] 회원가입 실패 - 이메일 중복: {}", req.getEmail());
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new BusinessException(ErrorCode.EMAIL_DUPLICATED);
         }
         if (userRepository.existsByUsername(req.getUsername())) {
             log.warn("[AUTH] 회원가입 실패 - 사용자명 중복: {}", req.getUsername());
-            throw new IllegalArgumentException("이미 사용 중인 사용자명입니다.");
+            throw new BusinessException(ErrorCode.USERNAME_DUPLICATED);
         }
 
         User user = User.builder()
@@ -59,12 +62,12 @@ public class AuthService {
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> {
                     log.warn("[AUTH] 로그인 실패 - 존재하지 않는 이메일: {}", req.getEmail());
-                    return new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+                    return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                 });
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             log.warn("[AUTH] 로그인 실패 - 비밀번호 불일치: userId={}", user.getId());
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         log.info("[AUTH] 로그인 성공: userId={}", user.getId());
@@ -82,7 +85,9 @@ public class AuthService {
         // 해당 유저의 캐릭터 ID 목록 수집 후 메시지 삭제
         List<String> characterIds = characterRepository.findAllByUserId(userId)
                 .stream().map(c -> c.getId()).toList();
-        characterIds.forEach(messageRepository::deleteByCharacterId);
+        if (!characterIds.isEmpty()) {
+            messageRepository.deleteByCharacterIdIn(characterIds);
+        }
 
         // 캐릭터 → 그룹 방 → 프로젝트 → 유저 삭제
         characterRepository.deleteAllByUserId(userId);

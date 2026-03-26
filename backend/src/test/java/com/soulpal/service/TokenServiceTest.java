@@ -10,16 +10,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Date;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TokenService 테스트")
 class TokenServiceTest {
 
@@ -62,18 +66,23 @@ class TokenServiceTest {
     // ── refresh ───────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("토큰 갱신 — 유효한 리프레시 토큰으로 새 액세스 토큰 발급")
-    void refresh_validToken_returnsNewAccessToken() {
+    @DisplayName("토큰 갱신 — 유효한 리프레시 토큰으로 새 액세스+리프레시 토큰 발급 (rotation)")
+    void refresh_validToken_returnsNewTokens() {
         given(jwtUtil.parse("refresh-token")).willReturn(claims);
         given(claims.get("type", String.class)).willReturn("refresh");
         given(claims.getSubject()).willReturn("user-1");
         given(claims.get("username", String.class)).willReturn("testuser");
         given(valueOps.get("refresh:user-1")).willReturn("refresh-token");
         given(jwtUtil.generateAccessToken("user-1", "testuser")).willReturn("new-access-token");
+        given(jwtUtil.generateRefreshToken("user-1", "testuser")).willReturn("new-refresh-token");
+        given(jwtUtil.getRefreshExpiration()).willReturn(604800000L);
 
-        String newToken = tokenService.refresh("refresh-token");
+        Map<String, String> result = tokenService.refresh("refresh-token");
 
-        assertThat(newToken).isEqualTo("new-access-token");
+        assertThat(result.get("accessToken")).isEqualTo("new-access-token");
+        assertThat(result.get("refreshToken")).isEqualTo("new-refresh-token");
+        then(redis).should().delete("refresh:user-1"); // old token deleted
+        then(valueOps).should().set(eq("refresh:user-1"), eq("new-refresh-token"), any()); // new token saved
     }
 
     @Test

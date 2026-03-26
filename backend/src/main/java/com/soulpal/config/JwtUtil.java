@@ -46,11 +46,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    // 하위 호환
-    public String generate(String userId, String username) {
-        return generateAccessToken(userId, username);
-    }
-
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key())

@@ -1,11 +1,14 @@
 package com.soulpal.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.concurrent.RejectedExecutionException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -34,13 +37,6 @@ public class GlobalExceptionHandler {
         return build(e.getErrorCode(), e.getMessage());
     }
 
-    // ── 레거시: IllegalArgumentException → INVALID_INPUT ────────────────────
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArg(IllegalArgumentException e) {
-        log.warn("[BIZ] C001 {}", e.getMessage());
-        return build(ErrorCode.INVALID_INPUT, e.getMessage());
-    }
-
     // ── @Valid 검증 실패 ──────────────────────────────────────────────────────
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
@@ -60,6 +56,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<Map<String, Object>> handleRateLimit(RateLimitExceededException e) {
         return build(ErrorCode.RATE_LIMIT_EXCEEDED, e.getMessage());
+    }
+
+    // ── SSE 스레드 풀 포화 ────────────────────────────────────────────────────
+    @ExceptionHandler(RejectedExecutionException.class)
+    public ResponseEntity<Map<String, Object>> handleRejected(RejectedExecutionException e) {
+        log.warn("[UNHANDLED] SSE 스레드 풀 포화 — 요청 거부");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code",      "R002");
+        body.put("message",   "서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.");
+        body.put("timestamp", java.time.Instant.now().toString());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 
     // ── 미처리 예외 (스택트레이스 클라이언트 미노출) ──────────────────────────

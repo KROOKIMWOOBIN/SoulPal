@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Redis 기반 JWT 토큰 관리
@@ -46,8 +47,11 @@ public class TokenService {
         redis.delete(REFRESH_PREFIX + userId);
     }
 
-    /** 리프레시 토큰으로 새 액세스 토큰 발급 */
-    public String refresh(String refreshToken) {
+    /**
+     * 리프레시 토큰으로 새 액세스 + 리프레시 토큰 발급 (Rotation).
+     * 사용된 리프레시 토큰은 즉시 폐기하여 재사용 공격 방지.
+     */
+    public Map<String, String> refresh(String refreshToken) {
         Claims claims;
         try {
             claims = jwtUtil.parse(refreshToken);
@@ -70,11 +74,20 @@ public class TokenService {
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
         if (!refreshToken.equals(stored)) {
-            log.warn("[REFRESH] 토큰 불일치: userId={}", userId);
+            log.warn("[REFRESH] 토큰 불일치 (재사용 시도): userId={}", userId);
+            // 보안 위협: 탈취된 토큰으로 재사용 시도 → 저장된 토큰도 즉시 폐기
+            deleteRefreshToken(userId);
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
-        return jwtUtil.generateAccessToken(userId, username);
+        // Rotation: 기존 토큰 즉시 폐기 후 새 토큰 발급
+        deleteRefreshToken(userId);
+        String newAccessToken  = jwtUtil.generateAccessToken(userId, username);
+        String newRefreshToken = jwtUtil.generateRefreshToken(userId, username);
+        saveRefreshToken(userId, newRefreshToken);
+        log.info("[REFRESH] 토큰 갱신 완료 (rotation): userId={}", userId);
+
+        return Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken);
     }
 
     // ── 액세스 토큰 블랙리스트 ────────────────────────────────────────────────

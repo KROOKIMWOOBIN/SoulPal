@@ -30,6 +30,8 @@ describe('createSseStream', () => {
 
     let readCount = 0
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
       body: {
         getReader: () => ({
           read: vi.fn().mockImplementation(() => {

@@ -30,8 +30,8 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtUtil.isValid(token) && !tokenService.isBlacklisted(token)) {
                 Claims claims = jwtUtil.parse(token);
-                // 리프레시 토큰은 API 접근 불가
-                if (!"refresh".equals(claims.get("type", String.class))) {
+                // access 토큰만 API 접근 허용 (type 필드 없거나 access 아닌 토큰 차단)
+                if ("access".equals(claims.get("type", String.class))) {
                     String userId   = claims.getSubject();
                     String username = claims.get("username", String.class);
                     var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());

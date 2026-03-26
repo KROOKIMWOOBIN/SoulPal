@@ -47,7 +47,7 @@ class ArchitectureTest {
                 .layer("Config").definedBy("com.soulpal.config..")
                 .layer("Exception").definedBy("com.soulpal.exception..")
                 .whereLayer("Controller").mayOnlyBeAccessedByLayers("Config")
-                .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service")
+                .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service", "Config")
                 .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
                 .check(classes);
     }

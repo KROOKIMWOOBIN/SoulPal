@@ -1,4 +1,4 @@
-.PHONY: help dev-backend dev-frontend test test-unit test-integration test-frontend lint lint-fix check docker-up docker-down docker-rebuild doctor
+.PHONY: help dev-backend dev-frontend embed-frontend test test-unit test-integration test-frontend lint lint-fix check docker-up docker-down docker-rebuild doctor
 
 help:
 	@echo "SoulPal 개발 명령어"
@@ -13,7 +13,8 @@ help:
 	@echo "  make doctor          환경 진단 — 출력을 AI에게 붙여넣으면 상태 파악 완료"
 	@echo "  make docker-up       전체 서비스 시작"
 	@echo "  make docker-down     서비스 중지"
-	@echo "  make docker-rebuild  이미지 재빌드 후 재시작"
+	@echo "  make docker-rebuild  이미지 재빌드 후 재시작
+  make embed-frontend  프론트 빌드 → 백엔드 내장 (최초 1회 또는 배포 빌드 시)"
 
 test: test-unit test-integration test-frontend
 
@@ -52,3 +53,6 @@ dev-backend:
 
 dev-frontend:
 	cd frontend && npm install --silent && npm run dev
+
+embed-frontend:
+	cd backend && ./gradlew copyFrontendToBuild

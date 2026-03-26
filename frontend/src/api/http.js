@@ -4,7 +4,7 @@ export const api = axios.create({ baseURL: '/api' })
 
 // JWT 자동 주입
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('soulpal_token')
+  const token = sessionStorage.getItem('soulpal_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -21,7 +21,7 @@ api.interceptors.response.use(
       return Promise.reject(err)
     }
 
-    const refreshToken = localStorage.getItem('soulpal_refresh')
+    const refreshToken = sessionStorage.getItem('soulpal_refresh')
     if (!refreshToken) {
       redirectLogin()
       return Promise.reject(err)
@@ -42,7 +42,7 @@ api.interceptors.response.use(
     try {
       const { data } = await api.post('/auth/refresh', { refreshToken })
       const newToken = data.accessToken
-      localStorage.setItem('soulpal_token', newToken)
+      sessionStorage.setItem('soulpal_token', newToken)
       api.defaults.headers.common.Authorization = `Bearer ${newToken}`
       refreshQueue.forEach(q => q.resolve(newToken))
       refreshQueue = []
@@ -60,9 +60,9 @@ api.interceptors.response.use(
 )
 
 export function redirectLogin() {
-  localStorage.removeItem('soulpal_token')
-  localStorage.removeItem('soulpal_refresh')
-  localStorage.removeItem('soulpal_user')
+  sessionStorage.removeItem('soulpal_token')
+  sessionStorage.removeItem('soulpal_refresh')
+  sessionStorage.removeItem('soulpal_user')
   window.location.href = '/login'
 }
 
@@ -105,7 +105,7 @@ export function createSseStream(url, payload, handlers) {
   }
 
   const doFetch = async (retried = false) => {
-    const token = localStorage.getItem('soulpal_token')
+    const token = sessionStorage.getItem('soulpal_token')
 
     const res = await fetch(url, {
       method: 'POST',
@@ -119,7 +119,7 @@ export function createSseStream(url, payload, handlers) {
 
     // 401 → 리프레시 토큰으로 1회 재시도
     if (res.status === 401 && !retried) {
-      const refreshToken = localStorage.getItem('soulpal_refresh')
+      const refreshToken = sessionStorage.getItem('soulpal_refresh')
       if (!refreshToken) { redirectLogin(); return }
       try {
         const r = await fetch('/api/auth/refresh', {
@@ -129,7 +129,7 @@ export function createSseStream(url, payload, handlers) {
         })
         if (!r.ok) { redirectLogin(); return }
         const { accessToken } = await r.json()
-        localStorage.setItem('soulpal_token', accessToken)
+        sessionStorage.setItem('soulpal_token', accessToken)
         // axios 기본 헤더도 동기화
         api.defaults.headers.common.Authorization = `Bearer ${accessToken}`
         return doFetch(true)

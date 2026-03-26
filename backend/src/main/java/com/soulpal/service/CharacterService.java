@@ -10,14 +10,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,12 +29,7 @@ public class CharacterService {
     private final CharacterRepository characterRepository;
     private final MessageRepository messageRepository;
 
-    private String currentUserId() {
-        return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
-
-    public Page<Character> getAll(String projectId, String sort, int page, int size) {
-        String userId = currentUserId();
+    public Page<Character> getAll(String userId, String projectId, String sort, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size);
         return switch (sort) {
             case "name"     -> characterRepository.findAllByUserIdAndProjectIdOrderByNameAsc(userId, projectId, pageable);
@@ -42,13 +38,18 @@ public class CharacterService {
         };
     }
 
-    public Character getById(String id) {
-        String userId = currentUserId();
+    public Character getById(String id, String userId) {
         return characterRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> {
                     log.warn("[CHARACTER] 조회 실패 - 없거나 권한 없음: id={}, userId={}", id, userId);
                     return new ResourceNotFoundException("캐릭터를 찾을 수 없습니다: " + id);
                 });
+    }
+
+    /** ID 목록으로 캐릭터를 한번에 조회. N+1 방지용 배치 로딩. */
+    public Map<String, Character> getByIds(List<String> ids) {
+        return characterRepository.findAllByIdIn(ids).stream()
+                .collect(Collectors.toMap(Character::getId, Function.identity()));
     }
 
     /** characterId가 userId 소유인지 검증. 불일치 시 ResourceNotFoundException. */
@@ -61,8 +62,7 @@ public class CharacterService {
     }
 
     @Transactional
-    public Character create(CharacterRequest req) {
-        String userId = currentUserId();
+    public Character create(String userId, CharacterRequest req) {
         Character character = Character.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(userId)
@@ -82,8 +82,8 @@ public class CharacterService {
     }
 
     @Transactional
-    public Character update(String id, CharacterRequest req) {
-        Character character = getById(id);
+    public Character update(String id, String userId, CharacterRequest req) {
+        Character character = getById(id, userId);
         character.setName(req.getName());
         character.setRelationshipId(req.getRelationshipId());
         character.setPersonalityIds(req.getPersonalityIds());
@@ -96,16 +96,16 @@ public class CharacterService {
     }
 
     @Transactional
-    public void delete(String id) {
-        Character character = getById(id);
+    public void delete(String id, String userId) {
+        Character character = getById(id, userId);
         messageRepository.deleteByCharacterId(id);
         characterRepository.delete(character);
         log.info("[CHARACTER] 삭제: id={}, name={}", id, character.getName());
     }
 
     @Transactional
-    public Character toggleFavorite(String id) {
-        Character character = getById(id);
+    public Character toggleFavorite(String id, String userId) {
+        Character character = getById(id, userId);
         character.setFavorite(!character.isFavorite());
         characterRepository.save(character);
         log.debug("[CHARACTER] 즐겨찾기 토글: id={}, favorite={}", id, character.isFavorite());
@@ -113,8 +113,8 @@ public class CharacterService {
     }
 
     @Transactional
-    public void updateLastMessage(String id, String message) {
-        Character character = getById(id);
+    public void updateLastMessage(String id, String userId, String message) {
+        Character character = getById(id, userId);
         character.setLastMessage(message);
         character.setLastMessageAt(LocalDateTime.now());
         characterRepository.save(character);

@@ -1,0 +1,27 @@
+# 빌드 산출물
+backend/build/
+frontend/dist/
+frontend/node_modules/
+.gradle/
+*.jar
+*.class
+*.war
+
+# 패키지 잠금 파일 (대용량, AI 분석 불필요)
+frontend/package-lock.json
+
+# IDE 설정
+.idea/
+*.iml
+.vscode/
+
+# Git 내부
+.git/
+
+# 로그 파일
+*.log
+logs/
+
+# 테스트 리포트
+backend/build/reports/
+backend/build/test-results/

@@ -24,7 +24,7 @@ class OllamaServiceTest {
         // baseUrl / model 필드 주입 (reflection)
         var baseUrlField = OllamaService.class.getDeclaredField("baseUrl");
         baseUrlField.setAccessible(true);
-        baseUrlField.set(ollamaService, "http://localhost:11434");
+        baseUrlField.set(ollamaService, "http://localhost:19999"); // 사용하지 않는 포트 → 항상 연결 실패
 
         var modelField = OllamaService.class.getDeclaredField("model");
         modelField.setAccessible(true);
@@ -40,8 +40,8 @@ class OllamaServiceTest {
         // → catch 블록으로 진입하여 emitter.completeWithError() 호출 확인
         SseEmitter emitter = mock(SseEmitter.class);
         Message msg = mock(Message.class);
-        given(msg.isUser()).willReturn(true);
-        given(msg.getContent()).willReturn("hi");
+        when(msg.isUser()).thenReturn(true);
+        when(msg.getContent()).thenReturn("hi");
 
         ollamaService.streamChat("system", List.of(msg), "hello", emitter);
 

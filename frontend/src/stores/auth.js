@@ -3,9 +3,9 @@ import { authApi } from '../api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    accessToken:  localStorage.getItem('soulpal_token') || null,
-    refreshToken: localStorage.getItem('soulpal_refresh') || null,
-    user: JSON.parse(localStorage.getItem('soulpal_user') || 'null')
+    accessToken:  sessionStorage.getItem('soulpal_token') || null,
+    refreshToken: sessionStorage.getItem('soulpal_refresh') || null,
+    user: JSON.parse(sessionStorage.getItem('soulpal_user') || 'null')
   }),
 
   getters: {
@@ -30,13 +30,15 @@ export const useAuthStore = defineStore('auth', {
       this._clearSession()
     },
 
-    /** 액세스 토큰 만료 시 리프레시 */
+    /** 액세스 토큰 만료 시 리프레시 (rotation: refreshToken도 교체) */
     async refreshAccessToken() {
       const rt = this.refreshToken
       if (!rt) throw new Error('no refresh token')
       const { data } = await authApi.refresh(rt)
-      this.accessToken = data.accessToken
-      localStorage.setItem('soulpal_token', data.accessToken)
+      this.accessToken  = data.accessToken
+      this.refreshToken = data.refreshToken
+      sessionStorage.setItem('soulpal_token',   data.accessToken)
+      sessionStorage.setItem('soulpal_refresh', data.refreshToken)
       return data.accessToken
     },
 
@@ -44,18 +46,18 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken  = data.accessToken
       this.refreshToken = data.refreshToken
       this.user = { userId: data.userId, username: data.username, email: data.email }
-      localStorage.setItem('soulpal_token',   data.accessToken)
-      localStorage.setItem('soulpal_refresh', data.refreshToken)
-      localStorage.setItem('soulpal_user',    JSON.stringify(this.user))
+      sessionStorage.setItem('soulpal_token',   data.accessToken)
+      sessionStorage.setItem('soulpal_refresh', data.refreshToken)
+      sessionStorage.setItem('soulpal_user',    JSON.stringify(this.user))
     },
 
     _clearSession() {
       this.accessToken  = null
       this.refreshToken = null
       this.user = null
-      localStorage.removeItem('soulpal_token')
-      localStorage.removeItem('soulpal_refresh')
-      localStorage.removeItem('soulpal_user')
+      sessionStorage.removeItem('soulpal_token')
+      sessionStorage.removeItem('soulpal_refresh')
+      sessionStorage.removeItem('soulpal_user')
     }
   }
 })

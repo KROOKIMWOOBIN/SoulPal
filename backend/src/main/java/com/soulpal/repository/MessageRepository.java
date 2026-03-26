@@ -13,6 +13,7 @@ public interface MessageRepository extends JpaRepository<Message, String> {
     List<Message> findByCharacterIdOrderByCreatedAtDesc(String characterId, Pageable pageable);
     List<Message> findByCharacterIdOrderByCreatedAtAsc(String characterId);
     void deleteByCharacterId(String characterId);
+    void deleteByCharacterIdIn(List<String> characterIds);
     long countByCharacterId(String characterId);
 
     @Query("SELECT m FROM Message m WHERE m.characterId = :characterId AND LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ORDER BY m.createdAt DESC")

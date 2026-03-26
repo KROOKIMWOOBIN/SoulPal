@@ -3,6 +3,7 @@ package com.soulpal.service;
 import com.soulpal.model.Message;
 import com.soulpal.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ public class MessageService {
     }
 
     @Transactional
+    @CacheEvict(value = "userContext", key = "#characterId")
     public Message save(String characterId, String content, boolean isUser) {
         Message message = Message.builder()
                 .id(UUID.randomUUID().toString())
@@ -49,6 +51,7 @@ public class MessageService {
     }
 
     @Transactional
+    @CacheEvict(value = "userContext", key = "#characterId")
     public void deleteLastAiMessage(String characterId) {
         List<Message> messages = messageRepository.findByCharacterIdOrderByCreatedAtDesc(
                 characterId, PageRequest.of(0, 1));
@@ -58,6 +61,7 @@ public class MessageService {
     }
 
     @Transactional
+    @CacheEvict(value = "userContext", key = "#characterId")
     public void clearAll(String characterId) {
         messageRepository.deleteByCharacterId(characterId);
     }

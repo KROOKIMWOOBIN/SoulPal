@@ -54,11 +54,13 @@ ollama:
   model: ${OLLAMA_MODEL:llama3}
   timeout: 120
 
-# Rate Limiting (사용자당 분당 요청 수)
+# Rate Limiting (분당 요청 수)
 rate-limit:
   chat:
-    capacity: 30          # 최대 버킷 크기
-    refill-per-minute: 20 # 분당 충전량
+    capacity: 30          # 채팅 API: 사용자당 분당 최대 30건
+    refill-per-minute: 20
+  auth:
+    capacity: 10          # 인증 API: IP당 분당 최대 10건 (브루트포스 방어)
 
 logging:
   level:
