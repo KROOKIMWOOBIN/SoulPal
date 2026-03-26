@@ -77,9 +77,6 @@ public class OllamaService {
                     if (!token.isEmpty()) {
                         fullResponse.append(token);
                         tokenCount++;
-                        emitter.send(SseEmitter.event()
-                                .name("token")
-                                .data(objectMapper.writeValueAsString(token)));
                     }
                     if (done) {
                         long duration = System.currentTimeMillis() - start;

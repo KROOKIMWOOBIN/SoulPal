@@ -151,16 +151,7 @@ public class GroupChatService {
                 StringBuilder fullResponse = new StringBuilder();
                 ollamaService.streamChatWithCallback(
                         systemPrompt, ollamaHistory, lastUserMessage,
-                        token -> {
-                            try {
-                                emitter.send(SseEmitter.event()
-                                        .name("token")
-                                        .data(objectMapper.writeValueAsString(
-                                                Map.of("characterId", character.getId(), "token", token)
-                                        )));
-                                fullResponse.append(token);
-                            } catch (Exception ignored) {}
-                        }
+                        token -> fullResponse.append(token)
                 );
 
                 String aiResponse = fullResponse.toString().trim();
